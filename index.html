@@ -1,0 +1,2433 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>大きい数</title>
+<style>
+  :root{
+    --ink:#28323c; --line:#2a3742; --paper:#fbfaf5;
+    --rule:#cfd8dd; --red:#e02424; --arrow:#f2602a; --hint:#ffd34d;
+    --rand:#3a86d6; --regen:#34a87a; --check:#f2602a; --fbl:#1a6fd4;
+    --key:#ffffff; --keyline:#d7dde1; --ok:#2f9e60; --ng:#d8533a; --hintlbl:#2f6fd0;
+    --gridmax:20vh; --fmax:48vh;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;height:100%;overflow:hidden;}
+  body{
+    font-family:"Hiragino Maru Gothic ProN","Hiragino Kaku Gothic ProN","Yu Gothic UI",system-ui,sans-serif;
+    background:
+      linear-gradient(0deg, rgba(0,0,0,0.015) 1px, transparent 1px) 0 0/100% 28px,
+      var(--paper);
+    color:var(--ink);
+  }
+  .wrap{
+    height:100vh; height:100dvh;
+    max-width:1180px;margin:0 auto;
+    padding:clamp(6px,1.2vh,14px) clamp(8px,1.6vw,16px) clamp(6px,1.2vh,14px);
+    display:flex;flex-direction:column;gap:clamp(4px,.9vh,10px);
+  }
+
+  /* 見出し＋タブ */
+  .top{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;}
+  h1{font-size:clamp(1.05rem,2.4vh,1.35rem);font-weight:800;margin:0;}
+  .sub{font-size:clamp(.8rem,1.8vh,1.05rem);color:#6a7780;margin:0;}
+  .levels{display:flex;gap:6px;flex-wrap:wrap;}
+  .levels button{
+    background:#eef2f4;color:#5a6772;border:2px solid var(--rule);box-shadow:none;
+    padding:clamp(5px,1vh,9px) clamp(8px,1.4vw,15px);border-radius:11px;
+    font-size:clamp(.88rem,2vh,1.15rem);
+  }
+  .levels button.on{background:var(--ink);color:#fff;border-color:var(--ink);}
+
+  /* 本体：左（問題）＋右（こたえ） */
+  .main{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:clamp(5px,1vh,10px);}
+  .left{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:clamp(5px,1vh,10px);}
+  .side{flex:0 0 auto;}
+
+  .board{
+    position:relative;flex:1 1 auto;min-height:0;overflow:auto;
+    background:#fff;border:2px solid var(--rule);border-radius:16px;
+    padding:clamp(6px,1.2vh,14px) 10px;
+    box-shadow:0 5px 0 rgba(42,55,66,.06);
+    display:flex;flex-direction:column;
+  }
+  .board>div{margin-top:auto;margin-bottom:auto;}
+  audio{display:none;}
+  svg{display:block;width:100%;height:auto;}
+  #nl{max-height:26vh;}
+  #kgrid,#wgrid,#mgrid,#fgrid{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  #fwrap{display:flex;align-items:center;justify-content:center;gap:clamp(6px,1.5vw,18px);}
+  #fwrap>#fgrid{flex:1 1 auto;min-width:0;}
+  #fzero{flex:0 0 auto;}                                /* 出ていない ときも 場所を あけておく */
+  #fzero .zrow{display:flex;gap:7px;margin-bottom:7px;justify-content:center;}
+  #fzero button{
+    display:flex;align-items:center;justify-content:center;
+    width:clamp(42px,8.4vh,70px);height:clamp(40px,7.6vh,64px);
+    padding:0;line-height:1;font-family:inherit;
+    font-size:clamp(1rem,3vh,1.7rem);font-weight:800;color:var(--ink);
+    border:2px solid #d5dde3;border-radius:12px;background:#fff;cursor:pointer;
+  }
+  #fzero button:active{background:#eaf1f6;}
+
+  .ops{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin:0 0 clamp(4px,.9vh,10px);}
+  .ops button{
+    background:#eef2f4;color:#3a4750;border:2px solid var(--rule);box-shadow:none;
+    padding:clamp(5px,1vh,9px) clamp(8px,1.3vw,14px);border-radius:11px;
+    font-size:clamp(.88rem,2vh,1.15rem);
+  }
+  .ops button.on{background:var(--rand);color:#fff;border-color:var(--rand);}
+  /* 2段めのチップ列（「数字で書く」の 書き方えらび）は 少し 小さく */
+  .ops2{margin-bottom:clamp(3px,.7vh,8px);}
+  .ops2 button{
+    padding:clamp(3px,.7vh,7px) clamp(7px,1.1vw,12px);
+    font-size:clamp(.78rem,1.7vh,1rem);border-radius:9px;
+  }
+
+  .question{text-align:center;font-weight:800;font-size:clamp(1rem,2.4vh,1.45rem);margin:clamp(4px,1vh,10px) 2px 0;line-height:1.6;}
+  .question .u{color:#6a7780;font-weight:700;}
+  .qbig{text-align:center;font-weight:900;font-size:clamp(1.2rem,3.3vh,2.05rem);margin:clamp(2px,.6vh,8px) 0;letter-spacing:.03em;}
+  #xtyped{
+    width:min(100%,440px);margin:0 auto;
+    border:3px solid var(--keyline);border-radius:14px;background:#fdfdfb;
+    text-align:center;font-weight:900;letter-spacing:.02em;line-height:1.5;
+    font-size:clamp(1.4rem,4.6vh,2.8rem);padding:clamp(3px,.8vh,9px) 8px;
+    display:flex;align-items:center;justify-content:center;
+    /* 空でも 書いても 同じ 高さ（1行ぶん＋内よはく＋線） */
+    height:calc(1.5em + clamp(6px,1.6vh,18px) + 6px);
+  }
+  #xtyped.ok{border-color:var(--ok);color:var(--ok);}
+  #xtyped.ng{border-color:var(--ng);}
+  .revealmul{text-align:center;font-weight:900;font-size:clamp(1rem,2.4vh,1.5rem);color:var(--red);min-height:1.3em;margin:2px 0 0;}
+  .note{text-align:center;font-size:clamp(.82rem,1.8vh,1.1rem);color:#6a7780;margin:2px 0 0;}
+
+  .pchoices{display:grid;grid-template-columns:repeat(7,1fr);gap:clamp(4px,.8vh,8px);margin:clamp(4px,1vh,10px) 2px 0;}
+  .pchoices button{
+    background:#fff;color:var(--ink);border:2px solid var(--keyline);box-shadow:0 3px 0 #e3e8eb;
+    font-size:clamp(.85rem,2.1vh,1.32rem);font-weight:800;white-space:nowrap;
+    padding:clamp(6px,1.3vh,12px) 1px;border-radius:11px;letter-spacing:-.02em;
+  }
+  .pchoices button:active{box-shadow:0 1px 0 #e3e8eb;}
+  .pchoices button.on{background:var(--rand);color:#fff;border-color:var(--rand);}
+  .pchoices.dig{grid-template-columns:repeat(10,1fr);}
+  .pchoices.dig button{font-size:clamp(1.1rem,2.7vh,1.85rem);}
+
+  .cfb{text-align:center;font-weight:900;font-size:clamp(1.05rem,2.6vh,1.6rem);min-height:1.4em;margin:clamp(2px,.6vh,8px) 0 0;}
+  .cfb.ok{color:var(--ok);} .cfb.ng{color:var(--ng);} .cfb.neutral{color:#6a7780;font-size:clamp(.9rem,2.1vh,1.25rem);}
+
+  /* はなまる／ばつ */
+  .maru,.batsu{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    pointer-events:none;z-index:5;opacity:0;visibility:hidden;transition:opacity .55s ease, visibility .55s ease;}
+  .maru.show,.batsu.show{opacity:1;visibility:visible;transition:opacity .12s ease, visibility 0s;}
+  .maru img{width:34%;max-width:190px;height:auto;filter:drop-shadow(0 6px 14px rgba(224,36,36,.25));}
+  .batsu svg{width:28%;max-width:150px;height:auto;filter:drop-shadow(0 6px 14px rgba(224,36,36,.25));}
+  .maru.show img,.batsu.show svg{animation:pop .5s cubic-bezier(.18,1.5,.4,1) both;}
+  @keyframes pop{0%{transform:scale(.2) rotate(-18deg);opacity:0;}60%{transform:scale(1.12) rotate(6deg);opacity:1;}100%{transform:scale(1) rotate(0);opacity:1;}}
+  @media(prefers-reduced-motion:reduce){ .maru img,.batsu svg{animation:none;} }
+
+  /* 操作ボタン列 */
+  .row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;}
+  button{
+    font-family:inherit;cursor:pointer;border:none;border-radius:12px;font-weight:800;color:#fff;
+    padding:clamp(7px,1.5vh,14px) clamp(11px,1.7vw,20px);font-size:clamp(.86rem,2vh,1.18rem);
+    box-shadow:0 3px 0 rgba(0,0,0,.16);transition:transform .04s, box-shadow .04s;
+    -webkit-tap-highlight-color:transparent;
+  }
+  button:active{transform:translateY(2px);box-shadow:0 1px 0 rgba(0,0,0,.16);}
+  button:focus-visible{outline:3px solid #2a3742;outline-offset:2px;}
+  .b-hint{background:var(--hint);color:#5a4a00;}
+  .b-hint.on{background:#ffbf1f;color:#5a4a00;box-shadow:inset 0 0 0 3px #fff,0 3px 0 rgba(0,0,0,.16);}
+  .b-rand{background:var(--rand);} .b-regen{background:var(--regen);} .b-reveal{background:#8a97a0;}
+
+  /* こたえ */
+  .side{
+    background:#fff;border:2px solid var(--rule);border-radius:16px;
+    padding:clamp(7px,1.3vh,14px);box-shadow:0 5px 0 rgba(42,55,66,.06);
+    display:flex;flex-direction:column;gap:clamp(4px,.9vh,9px);
+  }
+  #ans{
+    width:100%;font-family:inherit;font-weight:800;
+    font-size:clamp(1.15rem,2.9vh,1.95rem);text-align:center;
+    padding:clamp(5px,1.1vh,10px) 8px;border:3px solid var(--keyline);border-radius:12px;
+    background:#fdfdfb;color:var(--ink);
+  }
+  #ans:focus{outline:none;border-color:var(--rand);}
+  .ansbtns{display:grid;grid-template-columns:1.4fr 1fr;gap:8px;}
+  .b-check{background:var(--check);}
+  .pad{display:grid;grid-template-columns:repeat(4,1fr);gap:clamp(4px,.9vh,9px);}
+  .pad3{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(4px,.9vh,9px);}
+  .pad button,.pad3 button{
+    background:var(--key);color:var(--ink);font-size:clamp(1.05rem,2.6vh,1.65rem);
+    padding:clamp(5px,1.3vh,14px) 0;border:2px solid var(--keyline);box-shadow:0 3px 0 #e3e8eb;
+  }
+  .pad button:active,.pad3 button:active{box-shadow:0 1px 0 #e3e8eb;}
+  .k-zero{font-size:clamp(.9rem,2.1vh,1.25rem)!important;color:#3a4750;}
+  .k-back{color:#6a7780;}
+  .k-wide{grid-column:span 2;}
+  .k-unit{color:var(--rand)!important;}
+  .k-clear{background:#fdeee9!important;color:var(--ng)!important;border-color:#f3cdc0!important;box-shadow:0 3px 0 #f0d6cb!important;font-size:clamp(.8rem,1.9vh,1.12rem)!important;}
+  .fb{min-height:1.4em;text-align:center;font-weight:900;font-size:clamp(1.05rem,2.5vh,1.55rem);}
+  .fb.ok{color:var(--ok);} .fb.ng{color:var(--ng);} .fb.neutral{color:#6a7780;font-size:.95rem;}
+
+  /* 広い画面は左右2カラム */
+  @media(min-width:840px){
+    .main{flex-direction:row;}
+    .left{flex:1 1 auto;min-width:0;}
+    .side{flex:0 0 clamp(250px,26vw,320px);}
+    :root{--gridmax:26vh;--fmax:54vh;}
+  }
+  /* せまい画面 */
+  @media(max-width:839px){
+    :root{--gridmax:17vh;--fmax:36vh;}
+    #nl{max-height:20vh;}
+    .pchoices{grid-template-columns:repeat(5,1fr);}
+    .pchoices.dig{grid-template-columns:repeat(5,1fr);}
+  }
+  @media(max-height:620px){ .sub{display:none;} }
+
+  /* 数をつくる／まちがいさがし */
+  .bline{
+    display:flex;align-items:center;justify-content:center;
+    background:#fff8d6;border:2px solid #e8d98a;border-radius:12px;
+    padding:clamp(3px,.8vh,8px) 10px;margin:clamp(3px,.8vh,8px) auto;
+    max-width:min(100%,600px);
+  }
+  .blbl{flex:0 0 1.9em;text-align:center;}
+  .bcell{
+    flex:0 0 1.5em;text-align:center;line-height:1.25;
+    border:3px solid transparent;border-radius:8px;   /* □と 高さを そろえる */
+  }
+  .bbox{border-color:var(--red);background:#fff;}
+  .bdim{opacity:.18;}                                  /* ヒント：同じ 上の位を うっすら */
+  #fxsent,#fxq2{
+    text-align:left;line-height:2.0;max-width:min(100%,760px);margin:clamp(4px,1vh,10px) auto 0;
+    font-size:clamp(1rem,2.9vh,1.65rem);font-weight:800;
+  }
+  #fxsent{
+    border:3px solid var(--arrow);border-radius:14px;padding:clamp(6px,1.2vh,12px) 16px;
+    width:max-content;max-width:min(100%,900px);   /* 文の 長さぶんだけ */
+  }
+  #fxq2{text-align:center;}
+  .fxbox{
+    display:inline-block;min-width:2.6em;padding:2px 8px;margin:0 5px;
+    border:3px solid var(--keyline);border-radius:10px;background:#fdfdfb;
+    font-weight:900;text-align:center;color:var(--ink);cursor:pointer;min-height:1.4em;
+  }
+  .fxbox.sel{border-color:var(--rand);background:rgba(58,134,214,.14);}
+  .fxbox.ok{border-color:var(--ok);color:var(--ok);}
+  .fxbox.ng{border-color:var(--ng);color:var(--ng);}
+  #fxgrid svg{max-height:26vh;}
+
+  /* 10問チャレンジ（challenge10 のCSSを この画面の大きさに あわせる） */
+  #chal-mount{margin-left:auto;}
+  #chal-wrap #btn-challenge{
+    font-size:clamp(.78rem,1.8vh,1.02rem);
+    padding:clamp(4px,.9vh,8px) clamp(8px,1.4vw,16px);
+  }
+  #chal-wrap #chal-bar{
+    font-size:clamp(.75rem,1.7vh,.98rem);
+    padding:clamp(3px,.7vh,6px) clamp(8px,1.2vw,14px);
+  }
+  #chal-wrap #chal-dots{font-size:clamp(.8rem,1.9vh,1.05rem);letter-spacing:1px;}
+  @media(max-width:600px){ #chal-mount{margin-left:0;} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <h1>大きい数</h1>
+    <p class="sub" id="sub">億・兆までの 大きい数を おぼえよう。</p>
+    <div id="chal-mount"></div>
+  </div>
+
+  <div class="levels">
+    <button id="tabShikumi" class="on">大きい数のしくみ</button>
+    <button id="tabMake">あわせた数</button>
+    <button id="tabNL">数直線</button>
+    <button id="tabMul">10倍・1/10</button>
+    <button id="tabBig">数をつくる</button>
+    <button id="tabFude">かけ算の筆算</button>
+  </div>
+
+  <div class="main">
+    <div class="left">
+      <div class="board">
+
+        <div id="shikumiArea">
+          <div class="ops" id="sops">
+            <button data-sq="q1" class="on">何の位</button>
+            <button data-sq="q3">何が何こ</button>
+            <button data-sq="w">数字で書く</button>
+            <button data-sq="rand">ランダム</button>
+          </div>
+
+          <div id="kuraiArea">
+            <div id="kgrid"></div>
+            <p class="question" id="kq"></p>
+            <div class="pchoices" id="kchoices"></div>
+            <p class="cfb" id="kfb"></p>
+          </div>
+
+          <div id="writeArea" style="display:none">
+            <div class="ops ops2" id="wops">
+              <button data-wm="click" class="on">マスをクリック</button>
+              <button data-wm="type">じゅんに書く</button>
+            </div>
+            <p class="question">つぎの 数を 数字で 書きましょう。</p>
+            <p class="qbig" id="wkanji"></p>
+            <div id="wgrid"></div>
+            <p class="revealmul" id="wreveal"></p>
+          </div>
+        </div>
+
+        <div id="makeArea" style="display:none">
+          <div class="ops" id="mops">
+            <button data-mq="m1" class="on">あわせた数</button>
+            <button data-mq="m2">あつめた数</button>
+            <button data-mq="m3">□こ</button>
+            <button data-mq="rand">ランダム</button>
+          </div>
+          <p class="qbig" id="mq"></p>
+          <div id="mgrid"></div>
+          <p class="revealmul" id="mreveal"></p>
+        </div>
+
+        <div id="nlArea" style="display:none">
+          <svg id="nl" viewBox="0 0 1060 240" role="img" aria-label="数直線"></svg>
+          <p class="question" id="nlq"></p>
+          <p class="revealmul" id="nlreveal"></p>
+        </div>
+
+        <div id="mulArea" style="display:none">
+          <div class="ops" id="xops">
+            <button data-op="x10" class="on">10倍</button>
+            <button data-op="d10">1/10</button>
+            <button data-op="rand">ランダム</button>
+          </div>
+          <p class="question" id="xq"></p>
+          <p class="qbig" id="xnum" style="font-size:clamp(1.6rem,5.4vh,3.2rem);margin:clamp(4px,1.6vh,18px) 0;"></p>
+          <p id="xtyped"></p>
+          <p class="note" id="xnote"></p>
+          <p class="revealmul" id="xreveal"></p>
+        </div>
+
+        <div id="bigArea" style="display:none">
+          <div class="ops" id="bops">
+            <button data-bq="b1" class="on">大きい整数</button>
+            <button data-bq="b2">大小くらべ</button>
+            <button data-bq="rand">ランダム</button>
+          </div>
+          <p class="question" id="bq"></p>
+          <p class="qbig" id="bq2"></p>
+          <div id="bgrid"></div>
+          <div class="pchoices dig" id="bchoices" style="display:none"></div>
+          <p class="revealmul" id="breveal"></p>
+        </div>
+
+        <div id="fudeArea" style="display:none">
+          <div class="ops" id="fops">
+            <button data-fq="f3" class="on">3けた×3けた</button>
+            <button data-fq="fk">くふうして</button>
+            <button data-fq="fx">まちがいさがし</button>
+            <button data-fq="rand">ランダム</button>
+          </div>
+          <div id="fudeMain">
+            <p class="question" id="fq"></p>
+            <div id="fwrap">
+              <div id="fgrid"></div>
+              <div id="fzero" style="visibility:hidden">
+                <div class="zrow"><button data-z="1">1</button><button data-z="2">2</button><button data-z="3">3</button></div>
+                <div class="zrow"><button data-z="4">4</button><button data-z="5">5</button><button data-z="6">6</button></div>
+                <div class="zrow"><button data-z="7">7</button><button data-z="8">8</button><button data-z="9">9</button></div>
+                <div class="zrow"><button data-z="0">0</button></div>
+              </div>
+            </div>
+          </div>
+          <div id="fxArea" style="display:none">
+            <p class="question">右の 筆算は まちがって います。□に あてはまる 数を 書きましょう。</p>
+            <div id="fxgrid"></div>
+            <p id="fxsent"></p>
+            <p id="fxq2"></p>
+          </div>
+          <p class="note" id="fnote"></p>
+          <p class="revealmul" id="freveal"></p>
+        </div>
+
+        <div class="maru" id="maru" aria-hidden="true">
+          <img src="https://raw.githubusercontent.com/byakusen/hanamaru/refs/heads/main/hanamaru2.png" alt="はなまる">
+        </div>
+        <div class="batsu" id="batsu" aria-hidden="true">
+          <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+            <line x1="24" y1="24" x2="76" y2="76" stroke="var(--red)" stroke-width="15" stroke-linecap="round"/>
+            <line x1="76" y1="24" x2="24" y2="76" stroke="var(--red)" stroke-width="15" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <audio id="seikai" src="https://github.com/byakusen/gogelige.quiz/raw/refs/heads/main/quiz_seikai.mp3" preload="auto"></audio>
+      </div>
+
+      <div class="row" id="rowShikumi">
+        <button class="b-hint" id="sHintBtn">ヒント（位を出す）</button>
+        <button class="b-regen" id="wZeroBtn">のこりに 0 を 入れる</button>
+        <button class="b-rand" id="sNextBtn">つぎの問題</button>
+        <button class="b-reveal" id="kRevealBtn">こたえを見る</button>
+        <button class="b-regen" id="wHardBtn">むずかしい（兆）</button>
+      </div>
+      <div class="row" id="rowMake" style="display:none">
+        <button class="b-hint" id="mHintBtn">ヒント（位を出す）</button>
+        <button class="b-regen" id="mZeroBtn">のこりに 0 を 入れる</button>
+        <button class="b-rand" id="mNextBtn">つぎの問題</button>
+      </div>
+      <div class="row" id="rowNL" style="display:none">
+        <button class="b-hint" id="nHintBtn">ヒント（数を入れる）</button>
+        <button class="b-rand" id="nRandBtn">矢印をかえる</button>
+        <button class="b-regen" id="nRegenBtn">1目もりをかえる</button>
+      </div>
+      <div class="row" id="rowMul" style="display:none">
+        <button class="b-hint" id="xHintBtn">ヒント（位のうごき）</button>
+        <button class="b-rand" id="xNextBtn">つぎの問題</button>
+      </div>
+      <div class="row" id="rowBig" style="display:none">
+        <button class="b-hint" id="bHintBtn">ヒント</button>
+        <button class="b-regen" id="bZeroBtn">のこりに 0 を 入れる</button>
+        <button class="b-rand" id="bNextBtn">つぎの問題</button>
+      </div>
+      <div class="row" id="rowFude" style="display:none">
+        <button class="b-hint" id="fHintBtn">ヒント（やり方）</button>
+        <button class="b-regen" id="fAgainBtn">もう一度</button>
+        <button class="b-rand" id="fNextBtn">つぎの問題</button>
+      </div>
+    </div>
+
+    <div class="side" id="answerBox">
+      <input id="ans" inputmode="numeric" placeholder="れい：265000000" autocomplete="off">
+      <div class="ansbtns">
+        <button class="b-check" id="checkBtn">こたえあわせ</button>
+        <button class="b-reveal" id="revealBtn">見る</button>
+      </div>
+      <div class="pad" id="numPad">
+        <button data-k="7">7</button><button data-k="8">8</button><button data-k="9">9</button><button class="k-back" data-k="back">←</button>
+        <button data-k="4">4</button><button data-k="5">5</button><button data-k="6">6</button><button class="k-zero" data-k="000">000</button>
+        <button data-k="1">1</button><button data-k="2">2</button><button data-k="3">3</button><button class="k-clear" data-k="clear">ぜんぶけす</button>
+        <button class="k-wide" data-k="0">0</button><button class="k-wide" data-k="00">00</button>
+      </div>
+      <div class="pad3" id="unitPad">
+        <button class="k-unit" data-k="万">万</button>
+        <button class="k-unit" data-k="億">億</button>
+        <button class="k-unit" data-k="兆">兆</button>
+      </div>
+      <div class="fb" id="fb"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 10問チャレンジ（challenge10.js の中身を そのまま 入れてあります） ===== -->
+<script>
+/* ============================================================
+   challenge10.js  —  「10問チャレンジ」だけを取り出したもの
+   ------------------------------------------------------------
+   もと：warizan81_kangae.html（小数のかけ算とわり算の筆算）⑪81
+   どんなアプリでも使えるように、CSS と HTML も中に入れてあります。
+   ほかのファイルは いりません（ライブラリなし・ネットもいらない）。
+
+   ■ 使いかた（3つ呼ぶだけ）
+     1. Challenge10.init({ mount: '#どこか', next: () => 次の問題を出す関数() })
+     2. 1問できたら          Challenge10.done()
+     3. まちがえたら          Challenge10.miss()
+
+   ■ そのほか
+     Challenge10.newProblem()  … 新しい問題を出したとき（その問題のミス数を0に）
+     Challenge10.reset()       … 数えなおす（タブを変えたときなど）
+     Challenge10.isOn()        … いまチャレンジ中か
+     Challenge10.stop()        … チャレンジをやめる
+     Challenge10.state         … {on, total, no, miss, missNow, perfect, t0}
+
+   ■ init に わたせるもの（ぜんぶ省略できます）
+     mount       ボタンを置く場所。'#id' か 要素。省略すると <body> の先頭
+     total       何問にするか（初期値 10）
+     next        次の問題を出す関数。これがないと自動で次に進みません
+     nextDelay   はなまるから次の問題までの待ち時間 ms（初期値 1800）
+     resultDelay 最後の問題から成せき表までの待ち時間 ms（初期値 1500）
+     label       ボタンの文字（初期値 '🏁 10問チャレンジ'）
+     sound       ボタンを押したとき鳴らす関数（例: () => playSound('click')）
+     onToggle    on/off が変わったとき呼ばれる関数 (on) => {}
+     onFinish    10問おわったとき呼ばれる関数 (成せき) => {}
+     record      true にすると、その日の最高記録を localStorage に残す
+     recordKey   記録の名前（アプリごとに変える。初期値 'challenge10'）
+     css         false にすると 見た目のCSSを入れない（自分で書くとき）
+   ============================================================ */
+(function (global) {
+    'use strict';
+
+    var CSS = `
+    .chal-btn {
+        font-size: 1rem; font-weight: bold; color: #6a1b9a;
+        background: #f3e5f5; border: 2px solid #ce93d8; border-radius: 20px;
+        padding: 7px 16px; box-shadow: 0 2px 0 #ce93d8; cursor: pointer;
+        font-family: inherit;
+    }
+    .chal-btn.on { color: #fff; background: #8e24aa; border-color: #6a1b9a; box-shadow: 0 2px 0 #4a148c; }
+    .chal-btn:focus-visible, .chal-btns button:focus-visible { outline: 3px solid #8e24aa; outline-offset: 2px; }
+    #chal-bar {
+        display: none; align-items: center; gap: 10px;
+        background: rgba(255,255,255,0.9); border-radius: 20px; padding: 6px 16px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        font-weight: bold; color: #6a1b9a; white-space: nowrap;
+    }
+    #chal-dots { color: #8e24aa; letter-spacing: 2px; font-size: 1.05rem; }
+    #chal-wrap { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    /* おわったときの成せき表 */
+    #chal-result {
+        display: none; position: fixed; left: 0; top: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.45); z-index: 900;
+        align-items: center; justify-content: center;
+    }
+    #chal-result.show { display: flex; }
+    .chal-card {
+        background: #fff; border-radius: 20px; padding: 28px 34px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.3); text-align: center; max-width: 90vw;
+    }
+    .chal-title { font-size: 1.8rem; font-weight: bold; color: #8e24aa; margin-bottom: 14px; }
+    .chal-lines { font-size: 1.25rem; font-weight: bold; color: #333; line-height: 2; }
+    .chal-lines b { color: #e53935; font-size: 1.5rem; }
+    .chal-msg { margin-top: 10px; color: #ff6f00; }
+    .chal-best { margin-top: 6px; font-size: 1rem; color: #6a1b9a; }
+    .chal-btns { display: flex; gap: 12px; justify-content: center; margin-top: 20px; }
+    .chal-btns button {
+        padding: 12px 20px; font-size: 1.1rem; font-weight: bold; font-family: inherit;
+        border-radius: 14px; cursor: pointer; border: none;
+    }
+    #btn-chal-again { color: #fff; background: #8e24aa; box-shadow: 0 3px 0 #4a148c; }
+    #btn-chal-quit  { color: #6a1b9a; background: #f3e5f5; border: 2px solid #ce93d8; }
+    @media (prefers-reduced-motion: reduce) { .chal-btn, .chal-btns button { transition: none; } }
+    `;
+
+    var BAR_HTML =
+        '<button id="btn-challenge" class="chal-btn" type="button"></button>' +
+        '<div id="chal-bar"><span id="chal-dots"></span><span id="chal-count"></span></div>';
+
+    var RESULT_HTML =
+        '<div class="chal-card">' +
+        '  <div class="chal-title">🏁 <span id="chal-total-title"></span>問 できました！</div>' +
+        '  <div class="chal-lines" id="chal-lines"></div>' +
+        '  <div class="chal-btns">' +
+        '    <button id="btn-chal-again" type="button">もう一度チャレンジ</button>' +
+        '    <button id="btn-chal-quit" type="button">やめる</button>' +
+        '  </div>' +
+        '</div>';
+
+    var cfg = null;
+    var chal = { on: false, total: 10, no: 0, miss: 0, missNow: 0, perfect: 0, t0: 0 };
+    var $ = function (id) { return document.getElementById(id); };
+
+    // --- きょうの記録（localStorage。使えないときは だまって何もしない）---
+    function todayKey() {
+        var d = new Date();
+        return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
+    }
+    function loadBest() {
+        if (!cfg.record) return null;
+        try {
+            var raw = localStorage.getItem(cfg.recordKey);
+            if (!raw) return null;
+            var o = JSON.parse(raw);
+            // その日の記録だけ／問題数がちがう記録はまぜない
+            return (o && o.day === todayKey() && o.total === chal.total) ? o : null;
+        } catch (e) { return null; }
+    }
+    function saveBest(perfect, sec) {
+        if (!cfg.record) return null;
+        var best = loadBest();
+        // ノーミスの数が多いほうが上。同じなら 時間が短いほう
+        if (best && (best.perfect > perfect || (best.perfect === perfect && best.sec <= sec))) return best;
+        var o = { day: todayKey(), perfect: perfect, sec: sec, total: chal.total };
+        try { localStorage.setItem(cfg.recordKey, JSON.stringify(o)); } catch (e) { }
+        return o;
+    }
+
+    // --- 帯（○○○●…）の書きかえ ---
+    function chalUpdateBar() {
+        $('btn-challenge').classList.toggle('on', chal.on);
+        $('chal-bar').style.display = chal.on ? 'flex' : 'none';
+        if (!chal.on) return;
+        var dots = '';
+        for (var i = 0; i < chal.total; i++) dots += (i < chal.no) ? '●' : '○';
+        $('chal-dots').innerText = dots;
+        $('chal-count').innerText = Math.min(chal.no + 1, chal.total) + '問め / ' + chal.total;
+    }
+
+    // --- はじめから数えなおす ---
+    function chalReset() {
+        chal.no = 0; chal.miss = 0; chal.missNow = 0; chal.perfect = 0; chal.t0 = Date.now();
+        $('chal-result').classList.remove('show');
+        chalUpdateBar();
+    }
+
+    // --- 1問おわったときに呼ぶ ---
+    function chalDone() {
+        if (!chal.on) return;
+        if (chal.missNow === 0) chal.perfect++;
+        chal.no++;
+        chalUpdateBar();
+        if (chal.no < chal.total) {
+            setTimeout(function () {         // つぎの問題へ
+                if (!chal.on) return;
+                chal.missNow = 0;
+                if (cfg.next) cfg.next();
+            }, cfg.nextDelay);
+            return;
+        }
+        var sec = Math.floor((Date.now() - chal.t0) / 1000);
+        var msg = (chal.perfect === chal.total) ? 'ぜんぶノーミス！ すばらしい！'
+                : (chal.perfect >= chal.total - 2) ? 'よくがんばりました！'
+                : 'つぎは もっとできる！';
+        var best = saveBest(chal.perfect, sec);
+        var result = { perfect: chal.perfect, miss: chal.miss, sec: sec, total: chal.total };
+        setTimeout(function () {
+            $('chal-total-title').innerText = chal.total;
+            $('chal-lines').innerHTML =
+                '<div>ノーミスでできた問題　<b>' + chal.perfect + '</b> / ' + chal.total + '</div>' +
+                '<div>まちがえた回数　<b>' + chal.miss + '</b> 回</div>' +
+                '<div>かかった時間　<b>' + Math.floor(sec / 60) + '</b> 分 <b>' + (sec % 60) + '</b> 秒</div>' +
+                '<div class="chal-msg">' + msg + '</div>' +
+                (best ? '<div class="chal-best">きょうの最高記録　ノーミス ' + best.perfect + ' / ' + best.total +
+                        ' 問　　' + Math.floor(best.sec / 60) + '分' + (best.sec % 60) + '秒</div>' : '');
+            $('chal-result').classList.add('show');
+            $('btn-chal-again').focus();
+            if (cfg.onFinish) cfg.onFinish(result);
+        }, cfg.resultDelay);
+    }
+
+    // --- はじめの用意 ---
+    function init(opt) {
+        opt = opt || {};
+        cfg = {
+            total: opt.total || 10,
+            next: opt.next || null,
+            nextDelay: (opt.nextDelay === undefined) ? 1800 : opt.nextDelay,
+            resultDelay: (opt.resultDelay === undefined) ? 1500 : opt.resultDelay,
+            label: opt.label || '🏁 10問チャレンジ',
+            sound: opt.sound || null,
+            onToggle: opt.onToggle || null,
+            onFinish: opt.onFinish || null,
+            record: !!opt.record,
+            recordKey: opt.recordKey || 'challenge10',
+            css: (opt.css === undefined) ? true : opt.css
+        };
+        chal.total = cfg.total;
+        if (opt.label === undefined && cfg.total !== 10) cfg.label = '🏁 ' + cfg.total + '問チャレンジ';
+
+        // CSS
+        if (cfg.css && !$('chal-style')) {
+            var st = document.createElement('style');
+            st.id = 'chal-style';
+            st.textContent = CSS;
+            document.head.appendChild(st);
+        }
+        // ボタンと帯
+        var host = (typeof opt.mount === 'string') ? document.querySelector(opt.mount) : opt.mount;
+        var wrap = $('chal-wrap');
+        if (!wrap) {
+            wrap = document.createElement('div');
+            wrap.id = 'chal-wrap';
+            wrap.innerHTML = BAR_HTML;
+            if (host) host.appendChild(wrap);
+            else document.body.insertBefore(wrap, document.body.firstChild);
+        }
+        // 成せき表
+        if (!$('chal-result')) {
+            var res = document.createElement('div');
+            res.id = 'chal-result';
+            res.innerHTML = RESULT_HTML;
+            document.body.appendChild(res);
+        }
+        $('btn-challenge').innerText = cfg.label;
+
+        $('btn-challenge').addEventListener('click', function () {
+            chal.on = !chal.on;
+            if (cfg.sound) cfg.sound();
+            chalReset();
+            if (cfg.onToggle) cfg.onToggle(chal.on);
+            if (cfg.next) cfg.next();
+        });
+        $('btn-chal-again').addEventListener('click', function () {
+            chalReset();
+            if (cfg.next) cfg.next();
+        });
+        $('btn-chal-quit').addEventListener('click', function () {
+            chal.on = false;
+            chalReset();
+            if (cfg.onToggle) cfg.onToggle(false);
+            if (cfg.next) cfg.next();
+        });
+
+        chalUpdateBar();
+        return API;
+    }
+
+    var API = {
+        init: init,
+        done: chalDone,                                        // 1問できた
+        miss: function () { if (chal.on) { chal.miss++; chal.missNow++; } },  // まちがえた
+        newProblem: function () { chal.missNow = 0; },          // 新しい問題を出した
+        reset: chalReset,                                       // 数えなおす
+        stop: function () { chal.on = false; chalReset(); },    // やめる
+        isOn: function () { return chal.on; },
+        updateBar: chalUpdateBar,
+        setTotal: function (n) { chal.total = cfg.total = n; chalReset(); },
+        state: chal
+    };
+
+    global.Challenge10 = API;
+    if (typeof module !== 'undefined' && module.exports) module.exports = API;
+})(typeof window !== 'undefined' ? window : this);
+
+</script>
+
+<script>
+
+(function(){
+  "use strict";
+
+  /* 10問チャレンジ（challenge10）。読みこめていなくても アプリは動く */
+  var CH = (typeof Challenge10 !== 'undefined') ? Challenge10 : {
+    init:function(){}, done:function(){}, miss:function(){},
+    newProblem:function(){}, reset:function(){}, isOn:function(){ return false; }
+  };
+
+  /* =========================================================
+     きほんの道具
+     ========================================================= */
+  var PLACE = ['一','十','百','千','一万','十万','百万','千万','一億','十億','百億','千億','一兆','十兆'];
+  var UNITV = ['1','10','100','1000','1万','10万','100万','1000万','1億','10億','100億','1000億','1兆','10兆'];
+  var K = ['','一','二','三','四','五','六','七','八','九'];
+
+  function rnd(a,b){ return a + Math.floor(Math.random()*(b-a+1)); }
+  function pick(arr){ return arr[rnd(0,arr.length-1)]; }
+  function pow10(n){ return Math.pow(10,n); }
+
+  // 4けたを漢数字に（1234→千二百三十四）
+  function kanji4(n){
+    var a=Math.floor(n/1000)%10, b=Math.floor(n/100)%10, c=Math.floor(n/10)%10, d=n%10, s='';
+    if(a) s += (a===1?'':K[a]) + '千';
+    if(b) s += (b===1?'':K[b]) + '百';
+    if(c) s += (c===1?'':K[c]) + '十';
+    if(d) s += K[d];
+    return s;
+  }
+  // 数を漢数字に（二億六千五百万 など）
+  function kanjiNum(v){
+    if(v===0) return '〇';
+    var t=Math.floor(v/1e12), o=Math.floor(v/1e8)%10000, m=Math.floor(v/1e4)%10000, r=v%10000, s='';
+    if(t) s += kanji4(t)+'兆';
+    if(o) s += kanji4(o)+'億';
+    if(m) s += kanji4(m)+'万';
+    if(r) s += kanji4(r);
+    return s;
+  }
+  // 数を「1兆400億」のような言い方に
+  function bigLabel(v){
+    if(v===0) return '0';
+    var t=Math.floor(v/1e12), o=Math.floor(v/1e8)%10000, m=Math.floor(v/1e4)%10000, r=v%10000, s='';
+    if(t) s += t+'兆';
+    if(o) s += o+'億';
+    if(m) s += m+'万';
+    if(r) s += r;
+    return s;
+  }
+  // 「1兆400億」「6000億」「600000000000」→ 数
+  function parseBig(s){
+    s = (s||'').replace(/\s/g,'');
+    if(s==='') return null;
+    if(!/^[0-9兆億万]+$/.test(s)) return null;
+    var total=0, cur='';
+    for(var i=0;i<s.length;i++){
+      var ch=s.charAt(i);
+      if(ch>='0' && ch<='9'){ cur += ch; }
+      else{
+        if(cur==='') return null;
+        var mul = (ch==='兆')?1e12 : (ch==='億')?1e8 : 1e4;
+        total += Number(cur)*mul; cur='';
+      }
+    }
+    if(cur!=='') total += Number(cur);
+    return total;
+  }
+  // 4けたごとに区切って表示（HTML）
+  function spacedHtml(str){
+    var groups=[], i=str.length;
+    while(i>0){ groups.unshift(str.slice(Math.max(0,i-4), i)); i-=4; }
+    return groups.map(function(g){ return '<span class="g">'+g+'</span>'; }).join('');
+  }
+
+  /* =========================================================
+     位取り表（SVG）
+     opt = { cells, digits, places, mark, dim }
+     ========================================================= */
+  var GC = 58;
+  function buildGrid(opt){
+    var n = opt.cells, dg = String(opt.digits||''), mark = (opt.mark===undefined)?-1:opt.mark;
+    var PADL=8, PADR=8, TOP=48, H=76, yb=TOP+H;
+    var VW = n*GC + PADL + PADR, VH = yb + 36;
+    var s = '<svg viewBox="0 0 '+VW+' '+VH+'" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;max-height:var(--gridmax)">';
+
+    // わく
+    s += '<rect x="'+PADL+'" y="'+TOP+'" width="'+(n*GC)+'" height="'+H+'" rx="4" fill="none" stroke="var(--line)" stroke-width="3"/>';
+    for(var i=1;i<n;i++){
+      var x = PADL + i*GC, fromRight = n-i;
+      var thick = (fromRight%4===0);
+      s += '<line x1="'+x+'" y1="'+TOP+'" x2="'+x+'" y2="'+yb+'" stroke="'+(thick?'var(--line)':'#b9c2c7')+'" stroke-width="'+(thick?3:1.4)+'"'+(thick?'':' stroke-dasharray="5 4"')+'/>';
+    }
+
+    // 数字（右づめ）
+    for(var d=0; d<dg.length && d<n; d++){
+      var idxFromRight = dg.length-1-d;
+      var col = n-1-idxFromRight;
+      var cx = PADL + col*GC + GC/2;
+      s += '<text x="'+cx+'" y="'+(TOP+56)+'" text-anchor="middle" font-size="52" font-weight="800" fill="var(--ink)">'+dg.charAt(d)+'</text>';
+    }
+
+    // マスごとの文字（「位の数字」モードでクリックして入れる）
+    if(opt.chars){
+      if(opt.sel>=0 && opt.sel<n){
+        var sx = PADL + opt.sel*GC;
+        s += '<rect x="'+(sx+3)+'" y="'+(TOP+3)+'" width="'+(GC-6)+'" height="'+(H-6)+'" rx="5" fill="rgba(58,134,214,.16)" stroke="var(--rand)" stroke-width="3"/>';
+      }
+      for(var q=0;q<n;q++){
+        var chq = opt.chars[q];
+        if(chq===null || chq===undefined || chq==='') continue;
+        var cxq = PADL + q*GC + GC/2;
+        var col = (opt.hi===q) ? 'var(--red)' : 'var(--ink)';
+        s += '<text x="'+cxq+'" y="'+(TOP+56)+'" text-anchor="middle" font-size="52" font-weight="800" fill="'+col+'">'+chq+'</text>';
+      }
+    }
+
+    // 位の名前（ヒント）
+    if(opt.places){
+      for(var p=0;p<n;p++){
+        var fr = n-1-p, cx2 = PADL + p*GC + GC/2;
+        var nm = PLACE[fr] || '';
+        s += '<text x="'+cx2+'" y="20" text-anchor="middle" font-size="17" font-weight="800" fill="var(--hintlbl)">'+nm+'</text>';
+      }
+    }
+
+    // ▼ しるし
+    if(mark>=0 && mark<n){
+      var mcol = n-1-mark, mx = PADL + mcol*GC + GC/2;
+      s += '<path d="M '+(mx-13)+' '+(TOP-22)+' L '+(mx+13)+' '+(TOP-22)+' L '+mx+' '+(TOP-4)+' Z" fill="var(--arrow)"/>';
+    }
+
+    // 下の「兆・億・万」と「一の位」
+    var labels = [[12,'兆'],[8,'億'],[4,'万']];
+    for(var g=0; g<labels.length; g++){
+      var fr0 = labels[g][0];
+      if(fr0 <= n-1){
+        var cxg = PADL + (n-1-fr0)*GC + GC/2;     // その位（一兆・一億・一万）のマスの下
+        s += '<text x="'+cxg+'" y="'+(yb+27)+'" text-anchor="middle" font-size="24" font-weight="800" fill="#8a97a0">'+labels[g][1]+'</text>';
+      }
+    }
+    var lx = PADL + (n-1)*GC + GC/2;
+    s += '<text x="'+lx+'" y="'+(yb+26)+'" text-anchor="middle" font-size="16" font-weight="800" fill="#c08a00">一の位</text>';
+
+    if(opt.click){
+      for(var cc=0; cc<n; cc++){
+        s += '<rect data-i="'+cc+'" x="'+(PADL+cc*GC)+'" y="'+TOP+'" width="'+GC+'" height="'+H+'" fill="transparent" style="cursor:pointer"/>';
+      }
+    }
+
+    s += '</svg>';
+    return s;
+  }
+
+  /* =========================================================
+     はなまる／ばつ／メッセージ
+     ========================================================= */
+  var maru = document.getElementById('maru'),
+      batsu = document.getElementById('batsu'),
+      seikai = document.getElementById('seikai'),
+      fb = document.getElementById('fb'),
+      ans = document.getElementById('ans');
+
+  var maruTimer=null, batsuTimer=null;
+  function showMaru(){
+    hideBatsu();
+    maru.classList.remove('show'); void maru.offsetWidth; maru.classList.add('show');
+    try{ seikai.currentTime=0; seikai.play(); }catch(e){}
+    if(maruTimer) clearTimeout(maruTimer);
+    maruTimer = setTimeout(function(){ maru.classList.remove('show'); maruTimer=null; }, 1000);
+  }
+  function hideMaru(){ if(maruTimer){ clearTimeout(maruTimer); maruTimer=null; } maru.classList.remove('show'); }
+  function showBatsu(){
+    hideMaru();
+    CH.miss();
+    batsu.classList.remove('show'); void batsu.offsetWidth; batsu.classList.add('show');
+    if(batsuTimer) clearTimeout(batsuTimer);
+    batsuTimer = setTimeout(function(){ batsu.classList.remove('show'); batsuTimer=null; }, 1000);
+  }
+  function hideBatsu(){ if(batsuTimer){ clearTimeout(batsuTimer); batsuTimer=null; } batsu.classList.remove('show'); }
+  var autoTimer=null, judgeTimer=null;
+  function cancelAuto(){
+    if(autoTimer){ clearTimeout(autoTimer); autoTimer=null; }
+    if(judgeTimer){ clearTimeout(judgeTimer); judgeTimer=null; }
+  }
+  // 答えが入ってから 一瞬おいて ◯✗ を出す
+  function judge(fn, ms){
+    if(judgeTimer) clearTimeout(judgeTimer);
+    judgeTimer = setTimeout(function(){ judgeTimer=null; fn(); }, (ms===undefined)?600:ms);
+  }
+  // いま開いている タブの「つぎの問題」
+  function nextAny(){
+    if(mode==='shikumi') nextShikumi();
+    else if(mode==='make') nextMake();
+    else if(mode==='nl') nextNL();
+    else if(mode==='mul') nextMul();
+    else if(mode==='fude') nextFude();
+    else if(mode==='big') nextBig();
+  }
+  function scheduleNext(){
+    cancelAuto();
+    // チャレンジ中は 数を かぞえてから 進む（次に進めるのは チャレンジ側）
+    if(CH.isOn()){ CH.done(); return; }
+    autoTimer = setTimeout(function(){ autoTimer=null; nextAny(); }, 1900);
+  }
+  function setFb(msg, cls){ fb.textContent = msg; fb.className = 'fb ' + (cls||''); }
+  function clearAll(){ ans.value=''; setFb('',''); hideMaru(); hideBatsu(); }
+
+  /* =========================================================
+     ① 位（くらい）モード
+     ========================================================= */
+  /* sType … このタブの中の 3つの 問題。'q1'＝何の位／'q3'＝何が何こ／'w'＝数字で書く */
+  var sType='q1', sRand=false;
+  var kDigits='1429400000000', kMark=0, kHint=false,
+      kChoice='', kRevealed=false, kFbMsg='', kFbCls='';
+
+  function newKurai(){
+    CH.newProblem();
+    var len = rnd(10,13);
+    var sig = Math.min(len, rnd(4,6));            // 上の何けたかだけ数字を入れる
+    var ds = ''+rnd(1,9);
+    for(var i=1;i<sig;i++) ds += rnd(0,9);
+    for(var j=sig;j<len;j++) ds += '0';
+    kDigits = ds;
+
+    var sigIdx = [];                               // 数字が入っている位（右から）
+    for(var p=len-1; p>=len-sig; p--) sigIdx.push(p);
+
+    var cand = sigIdx.filter(function(p){ return kDigits.charAt(len-1-p) !== '0'; });
+    kMark = pick(cand.length?cand:sigIdx);
+    kChoice=''; kRevealed=false; kFbMsg=''; kFbCls='';
+  }
+
+  function kCorrect(){ return (sType==='q1') ? PLACE[kMark] : UNITV[kMark]; }
+  function kCorrectText(){ return (sType==='q1') ? (PLACE[kMark]+'の位') : UNITV[kMark]; }
+
+  function renderKurai(){
+    var len = kDigits.length;
+    var gEl = document.getElementById('kgrid');
+    gEl.onclick = null;
+    gEl.innerHTML = buildGrid({ cells:len, digits:kDigits, places:kHint, mark:kMark });
+
+    var q = document.getElementById('kq'), ch = document.getElementById('kchoices');
+    var html = '', list = [];
+    if(sType==='q1'){
+      q.innerHTML = '▼の 数字（<span style="color:var(--arrow);font-weight:900">'+kDigits.charAt(len-1-kMark)+'</span>）は、何の位の 数字ですか。';
+      for(var i=len-1;i>=0;i--) list.push({v:PLACE[i], t:PLACE[i]+'の位'});
+      ch.className='pchoices';
+    }else{
+      var dg = kDigits.charAt(len-1-kMark);
+      q.innerHTML = '▼の <span style="color:var(--arrow);font-weight:900">'+dg+'</span> は、何が '+dg+' こ あることを 表していますか。';
+      for(var k=len-1;k>=0;k--) list.push({v:UNITV[k], t:UNITV[k]});
+      ch.className='pchoices';
+    }
+    for(var n=0;n<list.length;n++){
+      var on = (!kRevealed && list[n].v===kChoice) ? ' on' : '';
+      html += '<button class="'+on.trim()+'" data-v="'+list[n].v+'">'+list[n].t+'</button>';
+    }
+    ch.innerHTML = html;
+    Array.prototype.forEach.call(ch.querySelectorAll('button'), function(b){
+      b.addEventListener('click', function(){
+        cancelAuto();
+        kChoice = b.getAttribute('data-v'); kRevealed=false;
+        kFbMsg=''; kFbCls='';
+        renderKurai();
+        var ok = (kChoice === kCorrect());
+        judge(function(){
+          kFbMsg = ok ? '◯ せいかい！' : '✗ もういちど';
+          kFbCls = ok ? 'ok' : 'ng';
+          renderKurai();
+          if(ok){ showMaru(); scheduleNext(); } else showBatsu();
+        }, 450);
+      });
+    });
+
+    var f = document.getElementById('kfb');
+    if(kRevealed){ f.textContent = 'こたえ：'+kCorrectText(); f.className='cfb neutral'; }
+    else { f.textContent = kFbMsg; f.className = 'cfb '+(kFbCls||''); }
+    document.getElementById('sHintBtn').classList.toggle('on', kHint);
+  }
+
+  /* =========================================================
+     位取り表に数字を入れる 共通しくみ（②③⑤で使用）
+     ========================================================= */
+  var CN = 13;
+  // st.n = マスの数（省略すると13）。「数をつくる」タブでは 8〜10 に かえて 使う
+  function ciMake(n){ var st={cells:[],sel:-1,done:false,n:(n||CN)}; ciReset(st); return st; }
+  function ciReset(st,n){
+    if(n) st.n = n;
+    st.cells=[]; for(var i=0;i<st.n;i++) st.cells.push('');
+    st.sel = (st.home===undefined) ? -1 : st.home;   // home が あれば そこを えらんだ ままに
+    st.done=false;
+  }
+  function ciLeft(st){ for(var i=0;i<st.n;i++){ if(st.cells[i]!=='') return i; } return -1; }
+  function ciStr(st){
+    var L=ciLeft(st); if(L<0) return null;
+    var t='';
+    for(var i=L;i<st.n;i++){ if(st.cells[i]==='') return null; t += st.cells[i]; }
+    return t;
+  }
+  function ciSetValue(st,v){
+    ciReset(st);
+    var ds=String(v);
+    for(var i=0;i<ds.length;i++) st.cells[st.n-ds.length+i]=ds.charAt(i);
+    st.done=true; st.sel=-1;
+  }
+  function ciCheck(st,target,auto,render){
+    var t=ciStr(st);
+    if(t===null){ if(!auto) setFb('あいている 位が あるよ。0 を 入れよう','neutral'); return; }
+    var verdict = function(){
+      if(t===String(target)){ st.done=true; setFb('◯ せいかい！','ok'); render(); showMaru(); scheduleNext(); }
+      else if(Number(t)===target){ setFb('✗ おしい！ 前の 0 は いりません','ng'); showBatsu(); }
+      else { setFb('✗ もういちど（けた数と 0の数を たしかめよう）','ng'); showBatsu(); }
+    };
+    if(auto) judge(verdict); else verdict();
+  }
+  function ciFillZeros(st,target,render){
+    if(st.done) return;
+    var L=ciLeft(st);
+    if(L<0){ setFb('さきに 数字を 入れる マスを タップしてね','neutral'); return; }
+    for(var i=L+1;i<st.n;i++){ if(st.cells[i]==='') st.cells[i]='0'; }
+    st.sel=-1; render(); ciCheck(st,target,true,render);
+  }
+  function ciKey(st,target,k,render){
+    cancelAuto();
+    if(k==='clear'){ ciReset(st); setFb('',''); render(); return; }
+    if(st.done) return;
+    if(k==='back'){
+      if(st.sel<0) return;
+      if(st.cells[st.sel]==='' && st.sel>0) st.sel--;
+      st.cells[st.sel]=''; render(); return;
+    }
+    if(st.sel<0){ setFb('入れる マス（位）を タップしてね','neutral'); return; }
+    var str=String(k);
+    for(var i=0;i<str.length && st.sel<st.n;i++){ st.cells[st.sel]=str.charAt(i); st.sel++; }
+    if(st.sel>=st.n) st.sel=-1;
+    render(); ciCheck(st,target,true,render);
+  }
+  function ciGrid(gridId,st,places,render){
+    var gEl=document.getElementById(gridId);
+    gEl.innerHTML = buildGrid({ cells:st.n, chars:st.cells, places:places, mark:-1,
+                                sel:st.sel, click:!st.done });
+    gEl.onclick = function(e){
+      var t=e.target, i=(t && t.getAttribute) ? t.getAttribute('data-i') : null;
+      if(i===null || i===undefined || st.done) return;
+      cancelAuto(); st.sel=Number(i); setFb('',''); render();
+    };
+  }
+
+  /* =========================================================
+     ② 数字で書く（漢数字 → 数字）
+     ========================================================= */
+  var wVal=265000000, wHint=false, wHard=false, wMode='click', wRevealed=false;
+  var stW = ciMake();
+
+  // 4けたのまとまりをつくる（0がとびとびに入りやすい）
+  function wGroup(zeroRate){
+    var z = (zeroRate===undefined) ? 5 : zeroRate;   // 0になりやすさ（0〜9）
+    var v = 0;
+    for(var i=0;i<4;i++){ v = v*10 + ((rnd(0,9)<z) ? 0 : rnd(1,9)); }
+    return v;
+  }
+  function newWrite(){
+    CH.newProblem();
+    var v, t, o, m, guard=0;
+    do{
+      guard++;
+      if(wHard){
+        // 兆の数（六兆七千二百四十八億／六兆三百八億四百万 など）
+        t = rnd(1,9);
+        o = (rnd(0,9)<2) ? 0 : wGroup(4);
+        m = (rnd(0,9)<4) ? 0 : wGroup(6);
+        v = t*1e12 + o*1e8 + m*1e4;
+      }else{
+        var kind = rnd(0,2);
+        if(kind===0){        // 億と万（二億六千五百万／三億七十万 など）
+          o = wGroup(4); if(o===0) o = rnd(1,9);
+          m = (rnd(0,9)<3) ? 0 : wGroup(5);
+          v = o*1e8 + m*1e4;
+        }else if(kind===1){  // 億だけ（十二億／五千六十億 など）
+          o = wGroup(4); if(o===0) o = rnd(1,9);
+          v = o*1e8;
+        }else{               // 万の数（三千二十万 など）
+          m = wGroup(4); if(m<10) m = rnd(10,9999);
+          v = m*1e4;
+        }
+      }
+    }while(guard<20 && String(v).length<7);
+    wVal = v; wHint = false; ciReset(stW);
+  }
+
+  function renderWrite(){
+    document.getElementById('wkanji').textContent = kanjiNum(wVal);
+    if(wMode==='click'){
+      ciGrid('wgrid', stW, wHint, renderWrite);
+    }else{
+      var gEl=document.getElementById('wgrid');
+      gEl.onclick=null;
+      gEl.innerHTML = buildGrid({ cells:CN, digits:ans.value.replace(/[^0-9]/g,''), places:wHint, mark:-1 });
+    }
+    document.getElementById('wreveal').textContent = wRevealed ? ('こたえ：'+String(wVal)) : '';
+    document.getElementById('sHintBtn').classList.toggle('on', wHint);
+    document.getElementById('wZeroBtn').style.display = (wMode==='click') ? '' : 'none';
+    ans.style.display = (wMode==='click') ? 'none' : '';
+    Array.prototype.forEach.call(document.querySelectorAll('#wops button'), function(b){
+      b.classList.toggle('on', b.getAttribute('data-wm')===wMode);
+    });
+  }
+
+  /* =========================================================
+     ③ あわせた数・あつめた数
+     ========================================================= */
+  var mType='m1', mRand=false, mHint=false, mRevealed=false;
+  var mText='', mAnswer=0, mIsCount=false;
+  var stM = ciMake();
+
+  function newMake(){
+    CH.newProblem();
+    var t = mType;
+    if(t==='m1'){                     // 1兆を6こ、10億を4こ あわせた数
+      var i1 = pick([12,11,10,9,8]);
+      var lower = [];
+      for(var k=i1-1; k>=Math.max(4,i1-4); k--) lower.push(k);
+      var i2 = pick(lower);
+      var a = rnd(1,9), b = rnd(1,9);
+      mText = UNITV[i1]+' を '+a+' こ、'+UNITV[i2]+' を '+b+' こ あわせた数';
+      mAnswer = a*pow10(i1) + b*pow10(i2);
+      mIsCount = false;
+    }else if(t==='m2'){               // 1億を180こ、1万を370こ 集めた数
+      var i3 = pick([8,4]);           // 一億の位 か 一万の位 から
+      var c;
+      if(i3===8){                     // 1億を □こ（2〜999こ）
+        c = (rnd(0,9)<6) ? rnd(11,99)*10 : rnd(101,999);
+      }else{                          // 1万を □こ（2〜9999こ）
+        c = (rnd(0,9)<6) ? rnd(11,999)*10 : rnd(101,9999);
+      }
+      mText = UNITV[i3]+' を '+c+' こ 集めた数';
+      mAnswer = c*pow10(i3);
+      mIsCount = false;
+    }else{                            // 70億は 10億を □こ 集めた数
+      var i4 = pick([11,10,9,8,7]);
+      var cnt = (rnd(0,1)===0) ? rnd(2,9)*10 : rnd(2,99);
+      var val = cnt*pow10(i4);
+      mText = bigLabel(val)+' は、'+UNITV[i4]+' を □ こ 集めた数です。□ に 入る 数は？';
+      mAnswer = cnt;
+      mIsCount = true;
+    }
+    mHint=false; mRevealed=false; ciReset(stM);
+  }
+
+  function renderMake(){
+    document.getElementById('mq').textContent = mText;
+    var g = document.getElementById('mgrid');
+    if(mIsCount){ g.innerHTML=''; g.onclick=null; }
+    else{ ciGrid('mgrid', stM, mHint, renderMake); }
+    ans.style.display = mIsCount ? '' : 'none';
+    ans.placeholder = 'れい：70';
+    document.getElementById('mZeroBtn').style.display = mIsCount ? 'none' : '';
+    document.getElementById('mreveal').textContent =
+      mRevealed ? ('こたえ：'+String(mAnswer)) : '';
+    document.getElementById('mHintBtn').classList.toggle('on', mHint);
+  }
+
+  /* =========================================================
+     ④ 数直線
+     ========================================================= */
+  var NLU = [1e7, 1e8, 1e9, 1e10, 1e11];        // 1目もり
+  var NLN = 50;                                  // 目じるしと目じるしの間の 目もりの数
+  var NLEX = 4;                                  // 両はしの さきに つづく 小さい目もり
+  var nlU = 1e10, nlStart = 5e11, nlArrow = 10, nlHint = false, nlRevealed = false;
+  var nlCho = true;                              // 右の目じるしが 1兆 のとき
+
+  function newNLArrow(){
+    CH.newProblem();
+    // 1兆の数直線のときは、3回に1回 やじるしを 1兆より右に
+    if(nlCho && rnd(1,3)===1){
+      nlArrow = rnd(NLN+1, NLN+NLEX);
+      nlRevealed = false;
+      return;
+    }
+    var cand = [];
+    for(var i=-NLEX; i<=NLN+NLEX; i++){
+      if(i===0 || i===NLN) continue;
+      cand.push(i);
+      if(i%10===0) cand.push(i);                 // 大きい目もりも 出やすく
+      if(i<0 || i>NLN) cand.push(i);             // 目じるしの さきも 出やすく
+    }
+    nlArrow = pick(cand);
+    nlRevealed = false;
+  }
+  var nlFirst = true;
+  function newNL(){
+    // はじめの1回と、3回に1回は テストと同じ「5000億 〜 1兆」
+    if(nlFirst || rnd(1,3)===1){
+      nlFirst = false;
+      nlU = 1e10; nlStart = 5e11;                // 1目もり100億、右の目じるしが1兆
+      nlCho = true;
+    }else{
+      nlU = pick(NLU);
+      var kmax = (nlU>=1e11) ? 4 : 9;
+      nlStart = nlU*10*rnd(1,kmax);              // 左の目じるし（5000億 など）
+      nlCho = false;
+    }
+    nlHint = false;
+    newNLArrow();
+  }
+  function nlValue(i){ return nlStart + i*nlU; }
+
+  function renderNL(){
+    var M=110, PX=(950-M)/NLN, baseY=124, s='';
+    function X(i){ return M + i*PX; }
+    // 線は 両はしの さきへ つづく
+    s += '<line x1="'+(X(-NLEX)-26)+'" y1="'+baseY+'" x2="'+(X(NLN+NLEX)+26)+'" y2="'+baseY+'" stroke="var(--line)" stroke-width="3.5"/>';
+    for(var i=-NLEX; i<=NLN+NLEX; i++){
+      var major=(i%10===0), medium=(i%5===0);
+      var top = major ? baseY-32 : (medium ? baseY-22 : baseY-14);
+      var sw  = major ? 3 : (medium ? 1.9 : 1.2);
+      s += '<line x1="'+X(i)+'" y1="'+top+'" x2="'+X(i)+'" y2="'+baseY+'" stroke="var(--line)" stroke-width="'+sw+'"/>';
+    }
+    for(var m=0;m<=NLN;m+=10){
+      var isLbl = (m===0 || m===NLN);
+      if(!isLbl && !nlHint) continue;
+      s += '<text x="'+X(m)+'" y="'+(baseY-44)+'" text-anchor="middle" font-size="'+(isLbl?27:20)+'" font-weight="800" fill="'+(isLbl?'var(--ink)':'var(--hintlbl)')+'">'+bigLabel(nlValue(m))+'</text>';
+    }
+    var ax = X(nlArrow);
+    s += '<line x1="'+ax+'" y1="'+(baseY+42)+'" x2="'+ax+'" y2="'+(baseY+10)+'" stroke="var(--arrow)" stroke-width="5" stroke-linecap="round"/>';
+    s += '<path d="M '+(ax-11)+' '+(baseY+18)+' L '+(ax+11)+' '+(baseY+18)+' L '+ax+' '+(baseY+4)+' Z" fill="var(--arrow)"/>';
+    s += '<text x="'+ax+'" y="'+(baseY+72)+'" text-anchor="middle" font-size="26" font-weight="900" fill="var(--arrow)">?</text>';
+    if(nlRevealed){
+      s += '<text x="'+ax+'" y="'+(baseY-70)+'" text-anchor="middle" font-size="26" font-weight="900" fill="var(--red)">'+bigLabel(nlValue(nlArrow))+'</text>';
+    }
+    document.getElementById('nl').innerHTML = s;
+    document.getElementById('nlq').innerHTML =
+      '↑ の 目もりは いくつ？　<span class="u">いちばん 小さい 1目もりは '+bigLabel(nlU)+' です。</span>';
+    document.getElementById('nlreveal').textContent =
+      nlRevealed ? ('こたえ：'+bigLabel(nlValue(nlArrow))+'（'+String(nlValue(nlArrow))+'）') : '';
+    document.getElementById('nHintBtn').classList.toggle('on', nlHint);
+  }
+
+  /* =========================================================
+     ⑤ 10倍・100倍・1/10
+     ========================================================= */
+  var xOp='x10', xRand=false, xBase=5600000000, xHint=false, xRevealed=false;
+
+  // テストと同じ「56億・7000億・40億・2兆」のような きりのいい数をつくる。
+  // 問題も こたえも「◯億」「◯兆」の 一まとまりに なる 組みあわせだけを 使う。
+  // ［けた数, 0のかず］  けた数2 は 56億 のような 2けたの数
+  var XC = {
+    x10: { all:[[1,7],[1,8],[1,9],[1,10],[1,11],[2,8],[2,9]],
+           cross:[[1,7],[1,11]] },        // 8000万→8億 / 7000億→7兆
+    d10: { all:[[1,8],[1,9],[1,10],[1,11],[1,12],[2,9],[2,10]],
+           cross:[[1,8],[1,12]] }         // 3億→3000万 / 5兆→5000億
+  };
+  function newMul(op){
+    CH.newProblem();
+    op = op || xOp;
+    var t = XC[op] || XC.x10;
+    // 3回に1回は 位が かわる問題（そのときは かならず 1けたの数）
+    var c = (rnd(1,3)===1) ? pick(t.cross) : pick(t.all);
+    var la = c[0], e = c[1];
+    var a = (la===2) ? (rnd(1,9)*10 + rnd(1,9)) : rnd(1,9);
+    xBase = a * pow10(e);
+    xHint=false; xRevealed=false; xTypedCls='';
+  }
+
+  function xAnswer(){ return (xOp==='x10') ? xBase*10 : xBase/10; }
+  var xTypedCls = '';                    // こたえ枠の 色（''／'ok'／'ng'）
+  function xOpLabel(){ return (xOp==='x10') ? '10倍した数' : '1/10 にした数'; }
+  function renderMul(){
+    document.getElementById('xq').innerHTML =
+      'つぎの数を <span style="color:var(--red)">'+xOpLabel()+'</span>を 書きましょう。';
+    document.getElementById('xnum').textContent = bigLabel(xBase);
+    var typed = document.getElementById('xtyped');
+    typed.textContent = ans.value;
+    typed.className = xTypedCls;
+    ans.style.display = '';
+    document.getElementById('unitPad').style.display = unitKeysOn() ? '' : 'none';
+
+    var note = document.getElementById('xnote');
+    if(xHint){
+      note.innerHTML = bigLabel(xBase)+' ＝ '+String(xBase)+'<br>' + ((xOp==='d10')
+        ? '1/10 に すると、位は <b>1つ 右</b> へ うつり、0 が 1こ へります。'
+        : '10倍すると、位は <b>1つ 左</b> へ うつり、0 が 1こ ふえます。');
+    }else{ note.textContent=''; }
+
+    document.getElementById('xreveal').textContent =
+      xRevealed ? ('こたえ：'+bigLabel(xAnswer())+'（'+String(xAnswer())+'）') : '';
+    document.getElementById('xHintBtn').classList.toggle('on', xHint);
+    Array.prototype.forEach.call(document.querySelectorAll('#xops button'), function(b){
+      var op=b.getAttribute('data-op');
+      b.classList.toggle('on', xRand ? (op==='rand') : (op===xOp));
+    });
+  }
+
+  /* =========================================================
+     ⑥ かけ算の筆算（見せる筆算）
+       ・かける数を タップ → その段が 1けたずつ 書かれていく
+       ・2だんめからは、先に「ゆうれいの 0ちゃん」を 自分で 書く
+         （十の位なら 1つ、百の位なら 2つ。0のキーを おす）
+       ・青い矢印で「どの数と どの数を かけるか」を 見せる
+       ・繰り上がりは マスの 中の 右上に 小さい数字
+       ・かける数に 0 が あっても 段は とばさない（0×3 も 書く）
+       ・ぜんぶ そろったら 一の位から たてに たす
+     ========================================================= */
+  var FC = 50, FH = 56;                  // 筆算の 1マスの 大きさ
+  var fType='f3', fRand=false, fHint=false, fRevealed=false, stF=null;
+  var FNUM = ['①','②','③','④','⑤'];
+  // アニメーションの はやさ（ms）
+  var FSPD = { arrow:460, carry:360, digit:500, col:400, gap:560 };
+  var fTimer = null;
+  function fStop(){ if(fTimer){ clearTimeout(fTimer); fTimer=null; }
+                    if(typeof fxStop==='function') fxStop(); }
+
+  function fd3(){ return rnd(1,9)*100 + rnd(1,9)*10 + rnd(1,9); }
+
+  // 1つの段（文字列を そのまま マスに 入れる）
+  function fRowStr(cols, str, shift, kind, extra){
+    var exp=[], right=cols-1-shift, c;
+    for(c=0;c<cols;c++) exp.push('');
+    for(var i=0;i<str.length;i++){
+      var c2 = right - str.length + 1 + i;
+      if(c2>=0 && c2<cols) exp[c2]=str.charAt(i);
+    }
+    var o = { kind:kind, shift:shift, exp:exp, digit:0, dsh:0, ghost:0 };
+    if(extra) for(var k in extra) o[k]=extra[k];
+    return o;
+  }
+  // a × d を 1けたずつ 計算した 文字列（d が 0 なら 000… に なる）
+  function fMulDigits(a, d){
+    var as=String(a), out=[], carry=0, i, p;
+    for(i=0;i<as.length;i++){
+      p = Number(as.charAt(as.length-1-i))*d + carry;
+      out.unshift(String(p%10)); carry = Math.floor(p/10);
+    }
+    if(carry>0) out.unshift(String(carry));
+    return out.join('');
+  }
+
+  // ra×rb を 筆算する。pa・qb は もとの数に ついていた 0 の数
+  function fMakeState(ra, rb, pa, qb){
+    pa = pa||0; qb = qb||0;
+    var zeros = pa + qb, prod = ra*rb, fin = prod*pow10(zeros);
+    var cols = String(fin).length + 1;
+    var bd = String(rb), m = bd.length, rows = [], j;
+    if(m>=2){
+      for(j=0;j<m;j++){
+        var d = Number(bd.charAt(m-1-j));
+        var s = fMulDigits(ra, d) + new Array(j+1).join('0');   // うしろに ゆうれいの0
+        rows.push(fRowStr(cols, s, zeros, 'pp', { digit:d, dsh:j, ghost:j }));
+      }
+    }
+    // こたえは 1行だけ。くふうの ときは 右の 0を あとから 自分で 入れる
+    rows.push(fRowStr(cols, String(fin), 0, 'sum', { tail:zeros }));
+    var cells = [];
+    for(var r=0;r<rows.length;r++){
+      var line=[]; for(var c=0;c<cols;c++) line.push(''); cells.push(line);
+    }
+    var st = { ra:ra, rb:rb, pa:pa, qb:qb, zeros:zeros, base:zeros,
+               prod:prod, fin:fin, cols:cols, rows:rows, cells:cells,
+               carries:[], arrows:[], ghosts:{}, hi:-1, last:null,
+               seq:[], pi:0, ai:0, stage:'pick', done:false };
+    st.seq = fPhases(st);
+    st.stage = st.seq[0] ? (st.seq[0].kind==='mul' ? 'pick'
+                          : st.seq[0].kind==='ghost' ? 'ghost' : 'run') : 'run';
+    return st;
+  }
+
+  var FKETA = ['一','十','百','千'];
+  function fGhostMsg(j){
+    return 'つぎは '+FKETA[j]+'の位の かけ算。'+(j+1)+'だんめに「ゆうれいの 0ちゃん」を '+j+'つ 書こう。';
+  }
+  function fWriteMsg(st, d, j){
+    return st.ra+' × '+d+' を'+(j===0 ? ' 計算します。' : '、ゆうれいの 0ちゃんの 左から 書いていきます。');
+  }
+
+  // 筆算を「手じゅん（phase）」に わける
+  function fPhases(st){
+    var as = String(st.ra), rightR = st.cols-1-st.base, seq=[], r, j;
+    var ppIdx=[], sumIdx=-1;
+    for(r=0;r<st.rows.length;r++){
+      if(st.rows[r].kind==='pp') ppIdx.push(r);
+      if(st.rows[r].kind==='sum') sumIdx=r;
+    }
+
+    // 1つの段を 右から じゅんに かける（ゆうれいの0の 左から 書く）
+    function mulActs(rowIdx, d, ghost){
+      var acts=[], carry=0, i, col, p, ch;
+      var start = st.cols-1-st.base-ghost;
+      for(i=0;i<as.length;i++){
+        col = start - i;
+        acts.push({ t:'arrow', c:rightR-i });
+        p = Number(as.charAt(as.length-1-i))*d + carry;
+        ch = p%10; carry = Math.floor(p/10);
+        if(carry>0){
+          if(i===as.length-1) acts.push({ t:'digit', r:rowIdx, c:col-1, ch:String(carry) });
+          else acts.push({ t:'carry', r:rowIdx, c:col, v:carry });
+        }
+        acts.push({ t:'digit', r:rowIdx, c:col, ch:String(ch) });
+      }
+      return acts;
+    }
+    // ゆうれいの0ちゃん（右から じゅんに）
+    function ghostActs(rowIdx, need){
+      var acts=[];
+      for(var i=0;i<need;i++) acts.push({ t:'ghost', r:rowIdx, c:st.cols-1-st.base-i });
+      return acts;
+    }
+    // たてに たす
+    function addActs(rowIdx, srcs){
+      var acts=[], carry=0, c, k, s, ch, left=0, exp=st.rows[rowIdx].exp;
+      for(c=0;c<st.cols;c++){ if(exp[c]!==''){ left=c; break; } }
+      var right = st.cols-1-st.base;      // 0を つける 前の 右はし
+      for(c=right;c>=left;c--){
+        acts.push({ t:'col', c:c });
+        s = carry;
+        for(k=0;k<srcs.length;k++){
+          var d0 = st.rows[srcs[k]].exp[c];
+          if(d0!=='') s += Number(d0);
+        }
+        ch = s%10; carry = Math.floor(s/10);
+        if(carry>0) acts.push({ t:'carry', r:rowIdx, c:c, v:carry });
+        acts.push({ t:'digit', r:rowIdx, c:c, ch:String(ch) });
+      }
+      return acts;
+    }
+    // とった 0を こたえの 右に つける（子どもが 0を おす）
+    function tailActs(rowIdx, need){
+      var acts=[];   // こたえの すぐ右から 左→右に 書きたす
+      for(var i=0;i<need;i++) acts.push({ t:'tail', r:rowIdx, c:st.cols-need+i });
+      return acts;
+    }
+
+    var first = (st.zeros>0)
+      ? 'くふうして 計算します。0を とった かける数を タップしよう。'
+      : '最初に かける数を タップしよう。';
+
+    if(ppIdx.length>=2){
+      for(j=0;j<ppIdx.length;j++){
+        r = ppIdx[j];
+        if(j>0){
+          seq.push({ kind:'ghost', row:r, mcol:rightR-j,
+                     pick:fGhostMsg(j), msg:fGhostMsg(j), acts:ghostActs(r, j) });
+        }
+        seq.push({ kind:'mul', row:r, d:st.rows[r].digit, sh:j, mcol:rightR-j,
+                   pick: (j===0) ? first : 'つぎに かける数を タップしよう。',
+                   msg:  fWriteMsg(st, st.rows[r].digit, j),
+                   acts: mulActs(r, st.rows[r].digit, j) });
+      }
+      seq.push({ kind:'add', row:sumIdx, msg:ppIdx.length+'だんの 答えを、一の位から たし算します。',
+                 acts: addActs(sumIdx, ppIdx) });
+    }else{
+      var bd = String(st.rb), d1=0, sh1=0, dd;
+      for(var i2=0;i2<bd.length;i2++){
+        dd = Number(bd.charAt(bd.length-1-i2));
+        if(dd!==0){ d1=dd; sh1=i2; }
+      }
+      seq.push({ kind:'mul', row:sumIdx, d:d1, sh:sh1, mcol: rightR - sh1,
+                 pick: first, msg: fWriteMsg(st, d1, 0),
+                 acts: mulActs(sumIdx, d1, sh1) });
+    }
+    if(st.zeros>0){
+      seq.push({ kind:'ghost', row:sumIdx,
+                 pick:'とった 0を '+st.zeros+'つ、こたえの 右に 書こう。',
+                 msg: 'とった 0を '+st.zeros+'つ、こたえの 右に 書こう。',
+                 acts: tailActs(sumIdx, st.zeros) });
+    }
+    return seq;
+  }
+
+  function newFude(kind){
+    fStop();
+    if(kind==='fx'){ newFx(); return; }
+    CH.newProblem();
+    fHint=false; fRevealed=false;
+    if(kind==='fk'){
+      // くふうして筆算（3400×60 / 450×2800 のような形）
+      var ra=rnd(11,99), rb, pa, qb;
+      if(rnd(0,1)===0){ rb=rnd(2,9); pa=rnd(1,2); qb=rnd(1,2); if(pa+qb>3) qb=1; }
+      else{ do{ rb=rnd(11,99); }while(rb%10===0); pa=1; qb=rnd(1,2); }
+      stF = fMakeState(ra, rb, pa, qb);
+    }else{
+      // 3けた×3けた（テストと同じ4パターン）
+      var k=rnd(0,3), a, b;
+      if(k===0){ a=fd3(); b=fd3(); }                          // 247×357
+      else if(k===1){ a=rnd(1,9)*100 + rnd(1,9); b=fd3(); }    // 503×629（十の位が0）
+      else if(k===2){ a=rnd(1,9)*100 + rnd(1,9)*10; b=fd3(); } // 970×218（一の位が0）
+      else { a=fd3(); b=rnd(1,9)*100 + rnd(1,9); }             // 895×704（乗数に0）
+      stF = fMakeState(a, b, 0, 0);
+    }
+    setFb('','');
+  }
+
+  function fHintText(){
+    var st=stF, t=[], i=0, hasPP=false;
+    for(var r=0;r<st.rows.length;r++){
+      var row=st.rows[r];
+      if(row.kind!=='pp') continue;
+      hasPP=true;
+      t.push(FNUM[i++]+' '+st.ra+' × '+row.digit + (row.ghost ? '（0ちゃん '+row.ghost+'つ）' : ''));
+    }
+    if(hasPP) t.push(FNUM[i++]+' たてに たす');
+    else t.push(FNUM[i++]+' '+st.ra+' × '+st.rb);
+    if(st.zeros>0) t.push(FNUM[i++]+' 0を '+st.zeros+'こ つける');
+    return t.join('　');
+  }
+
+  /* ---------- 進行（タップ → アニメーション） ---------- */
+  function fApply(a){
+    var st=stF;
+    if(a.t==='arrow'){ st.arrows.push(a.c); st.last=null; }
+    else if(a.t==='carry'){ st.carries.push({ r:a.r, c:a.c, v:a.v }); st.last={ t:'carry', r:a.r, c:a.c }; }
+    else if(a.t==='digit'){ st.cells[a.r][a.c]=a.ch; st.last={ t:'digit', r:a.r, c:a.c }; }
+    else if(a.t==='ghost'){ st.cells[a.r][a.c]='0'; st.ghosts[a.r+','+a.c]=1; st.last={ t:'digit', r:a.r, c:a.c }; }
+    else if(a.t==='tail'){ st.cells[a.r][a.c]='0'; st.last={ t:'digit', r:a.r, c:a.c }; }
+    else if(a.t==='col'){ st.hi=a.c; st.last=null; }
+  }
+  function fStep(){
+    var st=stF, ph=st.seq[st.pi];
+    fTimer=null;
+    if(!ph || st.stage!=='run') return;
+    if(st.ai>=ph.acts.length){ fPhaseEnd(); return; }
+    var a = ph.acts[st.ai++];
+    fApply(a);
+    renderFude();
+    fTimer = setTimeout(fStep, FSPD[a.t] || 500);
+  }
+  function fPhaseEnd(){
+    var st=stF;
+    fStop();
+    st.pi++; st.ai=0; st.arrows=[]; st.hi=-1; st.last=null;
+    var ph = st.seq[st.pi];
+    if(!ph){
+      st.done=true; st.stage='done'; renderFude();
+      showMaru(); scheduleNext(); return;
+    }
+    if(ph.kind==='mul'){ st.stage='pick'; renderFude(); return; }
+    if(ph.kind==='ghost'){ st.stage='ghost'; renderFude(); return; }
+    st.stage='run'; renderFude();
+    fTimer = setTimeout(fStep, FSPD.gap);
+  }
+  // かける数を タップした
+  function fPick(mcol){
+    var st=stF, ph=st.seq[st.pi];
+    if(st.done || st.stage!=='pick' || !ph) return;
+    var bd = String(st.rb), rightR = st.cols-1-st.base, i = rightR - mcol;
+    var dg = (i>=0 && i<bd.length) ? bd.charAt(bd.length-1-i) : '';
+    if(dg===''){ setFb('かける数の 数字を タップしてね','neutral'); return; }
+    if(mcol!==ph.mcol){ setFb('✗ 右の 位から じゅんに かけよう','ng'); showBatsu(); return; }
+    setFb('',''); hideBatsu();
+    st.stage='run'; st.ai=0; renderFude();
+    fTimer = setTimeout(fStep, FSPD.gap);
+  }
+  // ゆうれいの0ちゃんの キーを おした
+  function fZero(k){
+    var st=stF, ph=st.seq[st.pi];
+    if(st.done || st.stage!=='ghost' || !ph) return;
+    if(Number(k)!==0){ setFb('✗ 「ゆうれいの 0ちゃん」だから 0 を おそう','ng'); showBatsu(); return; }
+    setFb('',''); hideBatsu();
+    fApply(ph.acts[st.ai++]);
+    renderFude();
+    if(st.ai>=ph.acts.length) fTimer = setTimeout(fPhaseEnd, FSPD.gap);
+  }
+  // 画面を タップ → いまの段を さいごまで
+  function fSkip(){
+    var st=stF, ph=st.seq[st.pi];
+    if(st.stage!=='run' || !ph) return;
+    fStop();
+    while(st.ai<ph.acts.length) fApply(ph.acts[st.ai++]);
+    st.last=null; renderFude();
+    fTimer = setTimeout(fPhaseEnd, FSPD.gap);
+  }
+  // もう一度（同じ問題を はじめから）
+  function fAgain(){
+    fStop(); cancelAuto(); hideMaru(); hideBatsu(); setFb('','');
+    if(fType==='fx'){ fxVals=['','']; fxMarks=['','']; fxSel=0; fxReset(); fRevealed=false; renderFude(); return; }
+    stF = fMakeState(stF.ra, stF.rb, stF.pa, stF.qb);
+    fRevealed=false; renderFude();
+  }
+  // さいごまで 見せる
+  function fReveal(){
+    var st=stF; fStop();
+    while(st.pi<st.seq.length){
+      var ph=st.seq[st.pi];
+      while(st.ai<ph.acts.length) fApply(ph.acts[st.ai++]);
+      st.pi++; st.ai=0;
+    }
+    st.arrows=[]; st.hi=-1; st.last=null; st.done=true; st.stage='done';
+    fRevealed=true; renderFude();
+  }
+
+  /* ---------- 絵をかく ---------- */
+  function buildFude(){
+    var st=stF, n=st.cols, PADL=66, PADR=10;
+    var VW = PADL + n*FC + PADR;
+    var yA = 8, yB = yA + FH, y = yB + FH, body='', r, c;
+    var hasPP=false;
+    for(r=0;r<st.rows.length;r++) if(st.rows[r].kind==='pp') hasPP=true;
+
+    var lines=[];
+    lines.push({ y:y+2, dash:false }); y += 14;
+    var rowY=[];
+    for(r=0;r<st.rows.length;r++){
+      var kd = st.rows[r].kind;
+      if(kd==='sum' && hasPP){ lines.push({ y:y+2, dash:false }); y += 14; }
+      rowY[r] = y; y += FH;
+    }
+    var VH = y + 8;
+    function cx(c){ return PADL + c*FC + FC/2; }
+
+    function digitsAt(str, rightCol, yy, fill, pop){
+      var t='';
+      for(var i=0;i<str.length;i++){
+        var c2 = rightCol - str.length + 1 + i;
+        if(c2<0 || c2>=n) continue;
+        t += '<text x="'+cx(c2)+'" y="'+(yy+FH*0.74)+'" text-anchor="middle" '+
+             'font-size="42" font-weight="800" fill="'+fill+'"'+(pop?' class="fpop"':'')+'>'+str.charAt(i)+'</text>';
+      }
+      return t;
+    }
+    function hline(yy, dash){
+      return '<line x1="'+(PADL-34)+'" y1="'+yy+'" x2="'+(PADL+n*FC)+'" y2="'+yy+
+             '" stroke="var(--line)" stroke-width="3"'+(dash?' stroke-dasharray="7 5"':'')+'/>';
+    }
+    function slash(fromCol, toCol, yy){
+      var t='';
+      for(var c2=fromCol;c2<=toCol;c2++){
+        if(c2<0 || c2>=n) continue;
+        var x=PADL+c2*FC;
+        t += '<line x1="'+(x+9)+'" y1="'+(yy+FH*0.70)+'" x2="'+(x+FC-9)+'" y2="'+(yy+FH*0.22)+
+             '" stroke="#c3ccd2" stroke-width="2.5" stroke-linecap="round"/>';
+      }
+      return t;
+    }
+    function arrow(x1,y1,x2,y2){
+      var dx=x2-x1, dy=y2-y1, L=Math.sqrt(dx*dx+dy*dy)||1;
+      var ux=dx/L, uy=dy/L, hx=x2-ux*13, hy=y2-uy*13, px=-uy*6.5, py=ux*6.5;
+      return '<line x1="'+x1+'" y1="'+y1+'" x2="'+hx+'" y2="'+hy+
+             '" stroke="var(--fbl)" stroke-width="3.4" stroke-linecap="round"/>'+
+             '<path d="M '+x2+' '+y2+' L '+(hx+px)+' '+(hy+py)+' L '+(hx-px)+' '+(hy-py)+
+             ' Z" fill="var(--fbl)"/>';
+    }
+
+    // うすい マス目（方眼）
+    var gy = [yA, yB];
+    for(r=0;r<st.rows.length;r++) gy.push(rowY[r]);
+    for(var q=0;q<gy.length;q++){
+      for(c=0;c<n;c++){
+        body += '<rect x="'+(PADL+c*FC)+'" y="'+gy[q]+'" width="'+FC+'" height="'+FH+
+                '" fill="none" stroke="#e4ecf1" stroke-width="1.2"/>';
+      }
+    }
+    // たし算の 列を 光らせる
+    if(st.hi>=0){
+      var hy0 = rowY[0], hy1 = rowY[st.rows.length-1]+FH;
+      body += '<rect x="'+(PADL+st.hi*FC)+'" y="'+(hy0-6)+'" width="'+FC+'" height="'+(hy1-hy0+12)+
+              '" rx="6" fill="rgba(58,134,214,.12)"/>';
+    }
+
+    var rightR = n-1-st.base;
+    // かけられる数
+    body += digitsAt(String(st.ra), rightR, yA, 'var(--ink)');
+    if(st.pa){
+      body += digitsAt(new Array(st.pa+1).join('0'), rightR+st.pa, yA, '#c3ccd2');
+      body += slash(rightR+1, rightR+st.pa, yA);
+    }
+    // ×かける数
+    var rbs = String(st.rb);
+    body += digitsAt(rbs, rightR, yB, 'var(--ink)');
+    if(st.qb){
+      body += digitsAt(new Array(st.qb+1).join('0'), rightR+st.qb, yB, '#c3ccd2');
+      body += slash(rightR+1, rightR+st.qb, yB);
+    }
+    // × は 筆算ぜんたいの 左どなり
+    var xcol = rightR - Math.max(String(st.ra).length, rbs.length);
+    var xx = (xcol>=0) ? cx(xcol) : (PADL-FC/2);
+    body += '<text x="'+xx+'" y="'+(yB+FH*0.74)+'" text-anchor="middle" font-size="42" font-weight="800" fill="var(--ink)">×</text>';
+
+    // よこ線
+    for(var L2=0;L2<lines.length;L2++) body += hline(lines[L2].y, lines[L2].dash);
+
+    // 各段の 数字（ゆうれいの0ちゃんは うすい色）
+    for(r=0;r<st.rows.length;r++){
+      for(c=0;c<n;c++){
+        var ch = st.cells[r][c];
+        if(ch==='') continue;
+        var isNew = (st.last && st.last.t==='digit' && st.last.r===r && st.last.c===c);
+        var gcol = st.ghosts[r+','+c] ? '#a9b4bc' : 'var(--ink)';
+        body += '<text x="'+cx(c)+'" y="'+(rowY[r]+FH*0.74)+'" text-anchor="middle" font-size="42" '+
+                'font-weight="800" fill="'+gcol+'"'+(isNew?' class="fpop"':'')+'>'+ch+'</text>';
+      }
+      if(st.rows[r].kind==='sum' && st.zeros>0){
+        body += '<text x="6" y="'+(rowY[r]+FH*0.62)+'" text-anchor="start" font-size="16" font-weight="800" fill="#8a97a0">こたえ</text>';
+      }
+    }
+    // 繰り上がりの 小さい数字。前の段の ぶんは うすく
+    var curRow = st.seq[st.pi] ? st.seq[st.pi].row : -1;
+    for(var m=0;m<st.carries.length;m++){
+      var cy2 = st.carries[m];
+      var isNewC = (st.last && st.last.t==='carry' && st.last.r===cy2.r && st.last.c===cy2.c);
+      body += '<text x="'+(PADL+(cy2.c-1)*FC+FC*0.74)+'" y="'+(rowY[cy2.r]+FH*0.30)+'" text-anchor="middle" '+
+              'font-size="19" font-weight="800" fill="'+(cy2.r===curRow?'var(--ink)':'#a9b4bc')+'"'+
+              (isNewC?' class="fpop"':'')+'>'+cy2.v+'</text>';
+    }
+    // 青い矢印（かける数 → かけられる数）
+    if(st.arrows.length){
+      var ph0 = st.seq[st.pi], mc = ph0 ? ph0.mcol : rightR;
+      for(var k2=0;k2<st.arrows.length;k2++){
+        body += arrow(cx(mc), yB+FH*0.20, cx(st.arrows[k2]), yA+FH*0.86);
+      }
+    }
+    // ゆうれいの0ちゃんを 書く ところ（点線の まる）
+    if(st.stage==='ghost'){
+      var phg = st.seq[st.pi], ag = phg.acts[st.ai];
+      if(ag){
+        body += '<circle cx="'+cx(ag.c)+'" cy="'+(rowY[ag.r]+FH*0.52)+'" r="'+(FC*0.40)+
+                '" fill="rgba(242,96,42,.10)" stroke="var(--arrow)" stroke-width="3" stroke-dasharray="6 5"/>';
+      }
+    }
+    // かける数を えらぶ ところ（タップの あたり判定）
+    if(st.stage==='pick'){
+      for(var i3=0;i3<rbs.length;i3++){
+        var mcol = rightR - i3;
+        body += '<rect data-m="'+mcol+'" x="'+(PADL+mcol*FC)+'" y="'+yB+'" width="'+FC+'" height="'+FH+
+                '" fill="transparent" style="cursor:pointer"/>';
+      }
+    }
+    var css = '<style>.fpop{animation:fpop .32s ease-out both}'+
+              '@keyframes fpop{from{opacity:0}to{opacity:1}}'+
+              '@media(prefers-reduced-motion:reduce){.fpop{animation:none}}</style>';
+    return '<svg viewBox="0 0 '+VW+' '+VH+'" xmlns="http://www.w3.org/2000/svg" '+
+           'style="width:100%;height:auto;max-height:var(--fmax)">'+css+body+'</svg>';
+  }
+
+  function renderFude(){
+    var isFx = (fType==='fx');
+    document.getElementById('fudeMain').style.display = isFx ? 'none' : '';
+    document.getElementById('fxArea').style.display   = isFx ? '' : 'none';
+    document.getElementById('answerBox').style.display = isFx ? '' : 'none';
+    ans.style.display = 'none';
+    document.getElementById('unitPad').style.display = 'none';
+    document.getElementById('fAgainBtn').style.display = '';
+    Array.prototype.forEach.call(document.querySelectorAll('#fops button'), function(b){
+      var v = b.getAttribute('data-fq');
+      b.classList.toggle('on', fRand ? (v==='rand') : (v===fType));
+    });
+    document.getElementById('fHintBtn').classList.toggle('on', fHint);
+    if(isFx){
+      document.getElementById('fzero').style.visibility = 'hidden';
+      renderFx();
+      document.getElementById('fnote').innerHTML = fHint ? fxHintText() : '';
+      document.getElementById('freveal').textContent = fRevealed ? ('こたえ：'+fxTargets().join('、')) : '';
+      return;
+    }
+    var st = stF, ph = st.seq[st.pi];
+    var msg = st.done ? ('こたえ （ '+st.fin+' ）')
+            : (!ph ? '' : ((st.stage==='pick' || st.stage==='ghost') ? ph.pick : ph.msg));
+    document.getElementById('fq').innerHTML = st.done
+      ? '<span style="color:var(--ok)">'+msg+'</span>' : msg;
+
+    // 出ていない ときも 場所は あけたまま（筆算が 横に ずれない）
+    document.getElementById('fzero').style.visibility = (st.stage==='ghost') ? 'visible' : 'hidden';
+
+    var g = document.getElementById('fgrid');
+    g.innerHTML = buildFude();
+    g.onclick = function(e){
+      var t = e.target;
+      var m = (t && t.getAttribute) ? t.getAttribute('data-m') : null;
+      if(m!==null && m!==undefined){ fPick(Number(m)); return; }
+      if(st.stage==='run') fSkip();
+    };
+
+    document.getElementById('fnote').innerHTML = fHint ? fHintText() : '';
+    document.getElementById('freveal').textContent = '';
+  }
+
+  /* =========================================================
+     ⑦ 数をつくる（0〜9の数字で □けたの整数 ／ 大小くらべ）
+     ========================================================= */
+  var bType='b1', bRand=false, bHint=false, bRevealed=false;
+  var bN=9, bKind='max', bRank=1, bAns=0;                 // 大きい整数
+  var bPre='', bSuf='', bBot='', bDig=0, bSet=[], bSel=[], bTry=null; // 大小くらべ
+  var stB = ciMake(9);
+  stB.home = 0;               // いちばん 大きい位から 書きはじめる
+
+  // 1けたずつ 同じ幅の マスに 入れる（位が たてに そろう）
+  function spread(s, cls){
+    var t='', a=String(s);
+    for(var i=0;i<a.length;i++) t += '<span class="bcell'+(cls||'')+'">'+a.charAt(i)+'</span>';
+    return t;
+  }
+
+  function newBig(){
+    CH.newProblem();
+    bHint=false; bRevealed=false;
+    if(bType==='b1'){
+      bN   = pick([8,9,10]);
+      bKind= 'max';                          // 「小さい」は 出さない
+      bRank= (rnd(0,4)===0) ? 1 : rnd(2,10);  // 2〜10ばんめが 中心
+      bAns = (bKind==='max') ? (pow10(bN) - bRank) : (pow10(bN-1) + bRank - 1);
+      ciReset(stB, bN);
+    }else{
+      var guard=0, n=9;
+      do{
+        guard++;
+        var d=[ rnd(1,9) ];
+        for(var i=1;i<n;i++) d.push(rnd(0,9));
+        var pos = rnd(2, n-4);                 // □の 場所（うしろに 3けた以上 のこす）
+        d[pos]   = rnd(6,8);                 // ㋑の □と 同じ位は 6・7・8
+        d[pos+1] = rnd(1,9);                 // その 右は 1以上（㋐を もっと 小さく できるように）
+        var suf = [];
+        for(var j=pos+1;j<n;j++) suf.push(rnd(0,9));
+        suf[0] = rnd(0, d[pos+1]-1);         // □の すぐ右は ㋐の ほうが 小さい
+        bPre = d.slice(0,pos).join('');
+        bSuf = suf.join('');
+        bBot = d.join('');
+        bDig = d[pos];
+        var sufBot = d.slice(pos+1).join('');
+        bSet = [];
+        for(var v=0;v<=9;v++){
+          if(v > bDig) bSet.push(v);
+          else if(v === bDig && Number(bSuf) > Number(sufBot)) bSet.push(v);
+        }
+      }while(guard<80 && (bSet.length<1 || bSet.length>9));
+      bSel = []; bTry = null;
+    }
+    setFb('','');
+  }
+
+  function bAnsText(){
+    return (bType==='b1') ? String(bAns) : bSet.join('、');
+  }
+
+  function renderBig(){
+    var q  = document.getElementById('bq'),  q2 = document.getElementById('bq2');
+    var g  = document.getElementById('bgrid'), ch = document.getElementById('bchoices');
+
+    if(bType==='b1'){
+      q.innerHTML = '0から9までの 数字を 使って、<b>'+bN+'けた</b>の 整数を つくります。<br>'+
+                    '同じ数字を 何回 使っても よいとき、つぎの 整数を 書きましょう。';
+      q2.textContent = (bRank===1 ? 'いちばん ' : bRank+'ばんめに ') +
+                       (bKind==='max' ? '大きい' : '小さい') + ' 整数';
+      g.style.display=''; ch.style.display='none';
+      ciGrid('bgrid', stB, bHint, renderBig);
+      document.getElementById('numPad').style.display='';
+      document.getElementById('bZeroBtn').style.display='';
+    }else{
+      q.innerHTML = '㋐と㋑は どちらも 9けたの 整数です。<br>'+
+                    '㋐が ㋑より 大きく なるのは、□が どんな 数字の ときですか。<b>ぜんぶ</b> えらびましょう。';
+      // ヒントの ときは、㋐㋑で 同じ 上の位を うっすら かくす
+      var dim = bHint ? ' bdim' : '', np = bPre.length;
+      q2.innerHTML = '<span class="bline"><span class="blbl">㋐</span>'+spread(bPre, dim)+
+                     '<span class="bcell bbox">'+(bTry===null ? '&nbsp;' : bTry)+'</span>'+spread(bSuf)+'</span>'+
+                     '<span class="bline"><span class="blbl">㋑</span>'+
+                     spread(bBot.slice(0,np), dim)+spread(bBot.slice(np))+'</span>';
+      g.innerHTML=''; g.onclick=null; g.style.display='none';
+      ch.style.display='';
+      var html='';
+      for(var v=0;v<=9;v++){
+        html += '<button class="'+((bSel.indexOf(v)>=0)?'on':'')+'" data-v="'+v+'">'+v+'</button>';
+      }
+      ch.innerHTML = html;
+      Array.prototype.forEach.call(ch.querySelectorAll('button'), function(b){
+        b.addEventListener('click', function(){
+          cancelAuto(); hideMaru(); hideBatsu();
+          var v = Number(b.getAttribute('data-v'));
+          bTry = v;                       // 赤い しかくに 入れて くらべやすく
+          var i = bSel.indexOf(v);
+          if(i>=0) bSel.splice(i,1); else bSel.push(v);
+          bRevealed=false; setFb('','');
+          renderBig();
+        });
+      });
+      document.getElementById('numPad').style.display='none';
+      document.getElementById('bZeroBtn').style.display='none';
+    }
+    document.getElementById('breveal').textContent = bRevealed ? ('こたえ：'+bAnsText()) : '';
+    document.getElementById('bHintBtn').classList.toggle('on', bHint);
+    document.getElementById('bHintBtn').textContent = (bType==='b1') ? 'ヒント（位を出す）' : 'ヒント（同じ位を かくす）';
+    ans.style.display='none';
+    document.getElementById('unitPad').style.display='none';
+    Array.prototype.forEach.call(document.querySelectorAll('#bops button'), function(b){
+      var v=b.getAttribute('data-bq');
+      b.classList.toggle('on', bRand ? (v==='rand') : (v===bType));
+    });
+  }
+
+  function bCheck(){
+    if(bType==='b1'){ ciCheck(stB, bAns, false, renderBig); return; }
+    if(bSel.length===0){ setFb('えらんでね','neutral'); return; }
+    var a=bSel.slice().sort(function(x,y){return x-y;}).join(','),
+        b=bSet.slice().sort(function(x,y){return x-y;}).join(',');
+    if(a===b){ setFb('◯ せいかい！','ok'); showMaru(); scheduleNext(); }
+    else{ setFb('✗ もういちど（ぜんぶ そろえよう）','ng'); showBatsu(); }
+  }
+
+  /* =========================================================
+     ⑧ まちがいさがし（筆算タブの中の 1つ）
+       293×605 の ように、百の位の 部分積を 1けたしか ずらしていない 筆算
+       ①に 600、②に 2 が 入ると、部分積を 正しい位置へ 動かし、
+       まちがった 積を 消して、一の位から じゅんに たし算を 見せる。
+       たし算は 子どもが 書かない（見て たしかめる）
+     ========================================================= */
+  var fxA=293, fxH=6, fxO=5, fxVals=['',''], fxSel=0, fxMarks=['',''];
+  var fxFixed=false, fxCells=[], fxCarries=[], fxHi=-1, fxLast=null;
+  var fxActs=[], fxAi=0, fxDone=false, fxTimer=null;
+
+  function fxB(){ return fxH*100 + fxO; }
+  function fxPP1(){ return fxA*fxO; }
+  function fxPP2(){ return fxA*fxH; }
+  function fxWrong(){ return fxPP1() + fxPP2()*10; }
+  function fxProd(){ return fxA*fxB(); }
+  function fxCols(){ return String(fxWrong()).length + 1; }
+  function fxTargets(){ return [ fxH*100, 2 ]; }
+  function fxStop(){ if(fxTimer){ clearTimeout(fxTimer); fxTimer=null; } }
+
+  function newFx(){
+    fxStop();
+    CH.newProblem();
+    fxA = rnd(1,9)*100 + rnd(0,9)*10 + rnd(1,9);
+    fxH = rnd(2,9); fxO = rnd(2,9);
+    fxVals=['','']; fxSel=0; fxMarks=['',''];
+    fxReset();
+    fHint=false; fRevealed=false;
+    setFb('','');
+  }
+  function fxReset(){
+    fxStop();
+    fxFixed=false; fxCells=[]; fxCarries=[]; fxHi=-1; fxLast=null;
+    fxActs=[]; fxAi=0; fxDone=false;
+    for(var c=0;c<fxCols();c++) fxCells.push('');
+  }
+
+  // 段を 列ごとの 数字に ばらす
+  function fxSpreadRow(val, rightCol){
+    var n=fxCols(), s=String(val), a=[], c;
+    for(c=0;c<n;c++) a.push('');
+    for(var i=0;i<s.length;i++){
+      var c2 = rightCol - s.length + 1 + i;
+      if(c2>=0 && c2<n) a[c2]=s.charAt(i);
+    }
+    return a;
+  }
+
+  // たし算の 手じゅん（一の位から）
+  function fxAddActs(){
+    var n=fxCols(), e1=fxSpreadRow(fxPP1(), n-1), e2=fxSpreadRow(fxPP2(), n-3);
+    var s=String(fxProd()), left=n-s.length, acts=[], carry=0, c;
+    for(c=n-1;c>=left;c--){
+      acts.push({ t:'col', c:c });
+      var v = carry + (e1[c]===''?0:Number(e1[c])) + (e2[c]===''?0:Number(e2[c]));
+      var ch = v%10; carry = Math.floor(v/10);
+      if(carry>0) acts.push({ t:'carry', c:c, v:carry });
+      acts.push({ t:'digit', c:c, ch:String(ch) });
+    }
+    return acts;
+  }
+  function fxApply(a){
+    if(a.t==='col'){ fxHi=a.c; fxLast=null; }
+    else if(a.t==='carry'){ fxCarries.push({ c:a.c, v:a.v }); fxLast={ t:'carry', c:a.c }; }
+    else if(a.t==='digit'){ fxCells[a.c]=a.ch; fxLast={ t:'digit', c:a.c }; }
+  }
+  function fxStep(){
+    fxTimer=null;
+    if(fxAi>=fxActs.length){
+      fxHi=-1; fxLast=null; fxDone=true; renderFx();
+      setFb('◯ せいかい！','ok'); showMaru(); scheduleNext(); return;
+    }
+    var a=fxActs[fxAi++];
+    fxApply(a); renderFx();
+    fxTimer = setTimeout(fxStep, FSPD[a.t] || 500);
+  }
+  // ①②が そろったら 筆算を 直して たし算を はじめる
+  function fxTryFix(){
+    var was = fxFixed;
+    var ok = (fxVals[0]!=='' && fxVals[1]!=='' &&
+              Number(fxVals[0])===fxH*100 && Number(fxVals[1])===2);
+    if(ok && !was){
+      fxReset(); fxFixed=true;
+      fxActs = fxAddActs(); fxAi=0;
+      setFb(fxPP2()+' を 正しい 位置に 動かしたよ。たし算を 見よう','ok');
+      fxTimer = setTimeout(fxStep, FSPD.gap);
+    }else if(!ok && was){
+      fxReset();                       // ①②を なおしたら もとの まちがった 筆算へ
+    }
+  }
+  // ①が 合ったら ②の □へ
+  function fxAdvance(){
+    if(fxSel===0 && fxVals[0]!=='' && Number(fxVals[0])===fxH*100 && fxVals[1]===''){
+      fxSel = 1;
+    }
+  }
+
+  function buildFxGrid(){
+    var n = fxCols();
+    var PADL=44, PADR=10, C=44, H=48, y=6, body='';
+    function dig(str, rightCol, yy, fill){
+      var t='';
+      for(var i=0;i<str.length;i++){
+        var c = rightCol - str.length + 1 + i;
+        if(c<0 || c>=n) continue;
+        t += '<text x="'+(PADL+c*C+C/2)+'" y="'+(yy+H*0.76)+'" text-anchor="middle" '+
+             'font-size="36" font-weight="800" fill="'+fill+'">'+str.charAt(i)+'</text>';
+      }
+      return t;
+    }
+    function hl(yy){
+      return '<line x1="'+(PADL-30)+'" y1="'+yy+'" x2="'+(PADL+n*C)+'" y2="'+yy+
+             '" stroke="var(--line)" stroke-width="3"/>';
+    }
+    var yPP1, yPP2, ySum;
+    body += dig(String(fxA), n-1, y, 'var(--ink)'); y+=H;
+    var bs=String(fxB());
+    body += dig(bs, n-1, y, 'var(--ink)');
+    body += '<text x="'+(PADL+(n-1-bs.length)*C+C/2)+'" y="'+(y+H*0.76)+
+            '" text-anchor="middle" font-size="36" font-weight="800" fill="var(--ink)">×</text>';
+    y+=H; body += hl(y+2); y+=12;
+    yPP1 = y; body += dig(String(fxPP1()), n-1, y, 'var(--ink)'); y+=H;
+    yPP2 = y;
+    if(fxFixed){
+      body += dig(String(fxPP2()), n-3, y, 'var(--ok)');     // 正しい 位置へ 動かした
+    }else{
+      body += dig(String(fxPP2()), n-2, y, 'var(--red)');    // ここが まちがい
+      body += '<text x="'+(PADL+n*C+4)+'" y="'+(y+H*0.7)+'" font-size="20" font-weight="800" fill="var(--red)">←</text>';
+    }
+    y+=H; body += hl(y+2); y+=12;
+    ySum = y;
+    if(fxFixed){
+      for(var c=0;c<n;c++){
+        if(fxCells[c]==='') continue;
+        var isNew = (fxLast && fxLast.t==='digit' && fxLast.c===c);
+        body += '<text x="'+(PADL+c*C+C/2)+'" y="'+(y+H*0.76)+'" text-anchor="middle" font-size="36" '+
+                'font-weight="800" fill="var(--ink)"'+(isNew?' class="fpop"':'')+'>'+fxCells[c]+'</text>';
+      }
+      for(var m=0;m<fxCarries.length;m++){
+        var cy=fxCarries[m];
+        var isNewC = (fxLast && fxLast.t==='carry' && fxLast.c===cy.c);
+        body += '<text x="'+(PADL+(cy.c-1)*C+C*0.74)+'" y="'+(y+H*0.30)+'" text-anchor="middle" '+
+                'font-size="17" font-weight="800" fill="var(--ink)"'+(isNewC?' class="fpop"':'')+'>'+cy.v+'</text>';
+      }
+    }else{
+      body += dig(String(fxWrong()), n-1, y, 'var(--red)');
+    }
+    y+=H;
+    // たし算中の 列を 光らせる
+    var hiRect='';
+    if(fxHi>=0){
+      hiRect = '<rect x="'+(PADL+fxHi*C)+'" y="'+(yPP1-4)+'" width="'+C+'" height="'+(ySum+H-yPP1+8)+
+               '" rx="6" fill="rgba(58,134,214,.12)"/>';
+    }
+    var css = '<style>.fpop{animation:fpop .32s ease-out both}'+
+              '@keyframes fpop{from{opacity:0}to{opacity:1}}'+
+              '@media(prefers-reduced-motion:reduce){.fpop{animation:none}}</style>';
+    return '<svg viewBox="0 0 '+(PADL+n*C+PADR+26)+' '+(y+8)+'" xmlns="http://www.w3.org/2000/svg" '+
+           'style="width:100%;height:auto;max-height:26vh">'+css+hiRect+body+'</svg>';
+  }
+
+  function fxBoxHtml(i){
+    return '<span class="fxbox '+(fxMarks[i]||'')+(fxSel===i?' sel':'')+'" data-b="'+i+'">'+
+           (fxVals[i]==='' ? '&nbsp;' : fxVals[i])+'</span>';
+  }
+  function renderFx(){
+    document.getElementById('fxgrid').innerHTML = buildFxGrid();
+    var sent = document.getElementById('fxsent');
+    sent.innerHTML =
+      '① '+fxPP2()+' を 左へ 2けた ずらして 書かなければ いけません。<br>'+
+      'なぜなら、'+fxPP2()+' は、'+fxA+' × '+fxBoxHtml(0)+' の 答えの '+(fxPP2()*100)+' の<br>'+
+      '0を '+fxBoxHtml(1)+' つ 省いた 数だからです。';
+    var q2 = document.getElementById('fxq2');
+    q2.innerHTML = '';                      // ②の 説明は 出さない（筆算に 積が 出る）
+    sent.onclick = function(e){
+      var t=e.target;
+      if(!t || !t.getAttribute) return;
+      var i=t.getAttribute('data-b');
+      if(i===null) return;
+      cancelAuto(); hideMaru(); hideBatsu();
+      fxSel=Number(i); setFb('',''); renderFx();
+    };
+    q2.onclick = null;
+  }
+
+  function fxKey(k){
+    if(fxDone) return;
+    if(k==='clear'){ fxVals=['','']; fxMarks=['','']; fxSel=0; setFb('',''); fxTryFix(); renderFx(); return; }
+    if(k==='back'){ fxVals[fxSel]=fxVals[fxSel].slice(0,-1); fxMarks[fxSel]=''; fxTryFix(); renderFx(); return; }
+    if(fxFixed) return;
+    if(fxVals[fxSel].length>=8) return;
+    fxVals[fxSel] += String(k);
+    fxMarks[fxSel]='';
+    setFb('','');
+    fxAdvance();            // ①が 合ったら ②の □へ
+    fxTryFix();             // ①②が そろったら たし算を はじめる
+    renderFx();
+  }
+
+  function fxCheck(){
+    if(fxFixed) return;
+    var tg=fxTargets(), all=true, any=false;
+    for(var i=0;i<2;i++){
+      if(fxVals[i]!=='') any=true;
+      var ok = (fxVals[i]!=='' && Number(fxVals[i])===tg[i]);
+      fxMarks[i] = ok ? 'ok' : 'ng';
+      if(!ok) all=false;
+    }
+    if(!any){ fxMarks=['','']; setFb('□に 数を 書いてね','neutral'); renderFx(); return; }
+    if(!all){ setFb('✗ 赤い □を 見なおそう','ng'); renderFx(); showBatsu(); }
+  }
+
+  function fxReveal(){
+    var tg=fxTargets();
+    fxVals=[String(tg[0]), String(tg[1])];
+    fxMarks=['','']; fRevealed=true;
+    fxReset(); fxFixed=true;
+    var acts=fxAddActs();
+    for(var i=0;i<acts.length;i++) fxApply(acts[i]);
+    fxHi=-1; fxLast=null; fxDone=true;
+    renderFx();
+  }
+  function fxHintText(){
+    return fxH+' は 百の位の 数字だから、ほんとうは '+fxA+' × '+(fxH*100)+' を 計算している。';
+  }
+
+  /* =========================================================
+     こたえ入力・テンキー
+     ========================================================= */
+  var mode = 'shikumi';
+  function unitKeysOn(){ return (mode==='nl') || (mode==='mul'); }
+
+  function sanitize(){
+    var v = ans.value.replace(/[^0-9兆億万]/g,'');
+    if(!unitKeysOn()) v = v.replace(/[兆億万]/g,'');
+    ans.value = v;
+  }
+  ans.addEventListener('input', function(){
+    cancelAuto(); hideMaru(); hideBatsu(); sanitize(); xTypedCls='';
+    if(mode==='shikumi' && sType==='w') renderWrite();
+    if(mode==='make') renderMake();
+    if(mode==='mul') renderMul();
+  });
+
+  function press(k){
+    cancelAuto(); hideMaru(); hideBatsu();
+    if(mode==='fude'){ if(fType==='fx') fxKey(k); return; }
+    if(mode==='big'){ if(bType==='b1') ciKey(stB, bAns, k, renderBig); return; }
+    if(mode==='shikumi'){
+      if(sType!=='w') return;
+      if(wMode==='click'){ ciKey(stW, wVal, k, renderWrite); return; }
+    }
+    if(mode==='make' && !mIsCount){ ciKey(stM, mAnswer, k, renderMake); return; }
+    if(k==='clear'){ ans.value=''; setFb('',''); }
+    else if(k==='back'){ ans.value = ans.value.slice(0,-1); }
+    else { ans.value += k; }
+    xTypedCls='';
+    if(mode==='shikumi' && sType==='w') renderWrite();
+    if(mode==='make') renderMake();
+    if(mode==='mul') renderMul();
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('.pad button[data-k], .pad3 button[data-k]'), function(btn){
+    btn.addEventListener('click', function(){ press(btn.getAttribute('data-k')); this.blur(); });
+  });
+
+  function check(){
+    if(mode==='shikumi' && sType!=='w') return;
+    if(mode==='fude'){ if(fType==='fx') fxCheck(); return; }
+    if(mode==='big'){ bCheck(); return; }
+    if(mode==='shikumi' && wMode==='click'){ ciCheck(stW, wVal, false, renderWrite); return; }
+    if(mode==='make' && !mIsCount){ ciCheck(stM, mAnswer, false, renderMake); return; }
+    var raw = ans.value.trim();
+    if(raw===''){ setFb('すうじを いれてね','neutral'); return; }
+
+    if(mode==='shikumi'){
+      if(!/^[0-9]+$/.test(raw)){ setFb('すうじを いれてね','neutral'); return; }
+      if(raw === String(wVal)){ setFb('◯ せいかい！','ok'); showMaru(); scheduleNext(); }
+      else if(Number(raw) === wVal){ setFb('✗ おしい！ 前の 0 は いりません','ng'); showBatsu(); }
+      else{ setFb('✗ もういちど（0の数を たしかめよう）','ng'); showBatsu(); }
+      return;
+    }
+    if(mode==='make'){
+      if(!/^[0-9]+$/.test(raw)){ setFb('すうじを いれてね','neutral'); return; }
+      if(Number(raw) === mAnswer){ setFb('◯ せいかい！','ok'); showMaru(); scheduleNext(); }
+      else{ setFb('✗ もういちど','ng'); showBatsu(); }
+      return;
+    }
+    var v = parseBig(raw);
+    if(v===null){ setFb('すうじを いれてね','neutral'); return; }
+    var target = (mode==='nl') ? nlValue(nlArrow) : xAnswer();
+    var ok = (v === target);
+    if(ok){ setFb('◯ せいかい！','ok'); showMaru(); scheduleNext(); }
+    else{ setFb('✗ もういちど','ng'); showBatsu(); }
+    if(mode==='mul'){ xTypedCls = ok ? 'ok' : 'ng'; renderMul(); }
+  }
+  document.getElementById('checkBtn').addEventListener('click', check);
+  document.addEventListener('keydown', function(e){
+    if(e.key!=='Enter') return;
+    if(mode==='shikumi' && sType!=='w') return;
+    var el = document.activeElement;
+    if(el && el.tagName==='BUTTON') return;
+    e.preventDefault();
+    check();
+  });
+  document.getElementById('revealBtn').addEventListener('click', function(){
+    if(mode==='shikumi'){
+      if(sType!=='w') return;
+      if(wMode==='click') ciSetValue(stW, wVal);
+      wRevealed = !wRevealed; renderWrite();
+    }
+    else if(mode==='make'){
+      if(!mIsCount) ciSetValue(stM, mAnswer);
+      mRevealed = !mRevealed; renderMake();
+    }
+    else if(mode==='nl'){ nlRevealed = !nlRevealed; renderNL(); }
+    else if(mode==='mul'){ xRevealed = !xRevealed; renderMul(); }
+    else if(mode==='fude'){ if(fType==='fx') fxReveal(); else fReveal(); }
+    else if(mode==='big'){
+      if(bType==='b1') ciSetValue(stB, bAns);
+      bRevealed = !bRevealed; renderBig();
+    }
+  });
+
+  /* =========================================================
+     ボタンの動き
+     ========================================================= */
+  // ①② 大きい数のしくみ（何の位／何が何こ／数字で書く）
+  var S_SUB = {
+    q1:'位取り表を 見て、位（くらい）を こたえよう。',
+    q3:'▼の 数字は 何が 何こ ある ことを 表すかな？',
+    w :'漢字の 数を 数字で 書こう。0の 数に 気をつけて。'
+  };
+
+  // いまの sType の 問題を 1つ 作る
+  function newShikumi(){
+    if(sType==='w'){ newWrite(); wRevealed=false; }
+    else { newKurai(); }
+  }
+
+  // タブの 中身（エリア・ボタン・こたえ欄）を sType に あわせる
+  function renderShikumi(){
+    var isW = (sType==='w');
+    document.getElementById('kuraiArea').style.display = isW ? 'none' : '';
+    document.getElementById('writeArea').style.display = isW ? '' : 'none';
+    document.getElementById('sub').textContent = S_SUB[sType];
+
+    Array.prototype.forEach.call(document.querySelectorAll('#sops button'), function(x){
+      var v = x.getAttribute('data-sq');
+      x.classList.toggle('on', sRand ? (v==='rand') : (v===sType));
+    });
+
+    // ボタン列：「数字で書く」だけ 0を入れる・むずかしい（兆）を 出す
+    document.getElementById('wZeroBtn').style.display = isW ? '' : 'none';
+    document.getElementById('wHardBtn').style.display = isW ? '' : 'none';
+    document.getElementById('kRevealBtn').style.display = isW ? 'none' : '';
+
+    // こたえ欄（テンキー）は「数字で書く」のときだけ
+    document.getElementById('answerBox').style.display = isW ? '' : 'none';
+    if(isW) ans.placeholder = 'れい：265000000';
+
+    if(isW) renderWrite(); else renderKurai();
+  }
+
+  function nextShikumi(){
+    if(sRand) sType = pick(['q1','q3','w']);
+    newShikumi(); clearAll(); renderShikumi();
+  }
+
+  Array.prototype.forEach.call(document.querySelectorAll('#sops button'), function(b){
+    b.addEventListener('click', function(){
+      var q = b.getAttribute('data-sq');
+      if(q==='rand'){ sRand=true; sType=pick(['q1','q3','w']); }
+      else{ sRand=false; sType=q; }
+      cancelAuto(); CH.reset();
+      newShikumi(); clearAll(); renderShikumi();
+    });
+  });
+  document.getElementById('sHintBtn').addEventListener('click', function(){
+    if(sType==='w') wHint=!wHint; else kHint=!kHint;
+    renderShikumi();
+  });
+  document.getElementById('sNextBtn').addEventListener('click', function(){ cancelAuto(); nextShikumi(); });
+  document.getElementById('kRevealBtn').addEventListener('click', function(){
+    kRevealed=!kRevealed; renderKurai();
+  });
+  document.getElementById('wZeroBtn').addEventListener('click', function(){ ciFillZeros(stW, wVal, renderWrite); });
+  Array.prototype.forEach.call(document.querySelectorAll('#wops button'), function(b){
+    b.addEventListener('click', function(){
+      wMode = b.getAttribute('data-wm');
+      ciReset(stW); ans.value=''; wRevealed=false; setFb('','');
+      hideMaru(); hideBatsu(); renderWrite();
+    });
+  });
+  document.getElementById('wHardBtn').addEventListener('click', function(){
+    wHard = !wHard;
+    document.getElementById('wHardBtn').textContent = wHard ? 'かんたん（億）' : 'むずかしい（兆）';
+    CH.reset();
+    newWrite(); wRevealed=false; clearAll(); renderWrite();
+  });
+
+  // ③ あわせた数
+  Array.prototype.forEach.call(document.querySelectorAll('#mops button'), function(b){
+    b.addEventListener('click', function(){
+      var q=b.getAttribute('data-mq');
+      if(q==='rand'){ mRand=true; mType=pick(['m1','m2','m3']); }
+      else{ mRand=false; mType=q; }
+      Array.prototype.forEach.call(document.querySelectorAll('#mops button'), function(x){
+        var v=x.getAttribute('data-mq');
+        x.classList.toggle('on', mRand ? (v==='rand') : (v===mType));
+      });
+      CH.reset();
+      newMake(); clearAll(); renderMake();
+    });
+  });
+  document.getElementById('mHintBtn').addEventListener('click', function(){ mHint=!mHint; renderMake(); });
+  document.getElementById('mZeroBtn').addEventListener('click', function(){ ciFillZeros(stM, mAnswer, renderMake); });
+  function nextMake(){
+    if(mRand) mType = pick(['m1','m2','m3']);
+    newMake(); clearAll(); renderMake();
+  }
+  document.getElementById('mNextBtn').addEventListener('click', function(){ cancelAuto(); nextMake(); });
+
+  // ④ 数直線
+  document.getElementById('nHintBtn').addEventListener('click', function(){ nlHint=!nlHint; renderNL(); });
+  function nextNL(){ if(rnd(0,3)===0) newNL(); else newNLArrow(); clearAll(); renderNL(); }
+  document.getElementById('nRandBtn').addEventListener('click', function(){ cancelAuto(); newNLArrow(); clearAll(); renderNL(); });
+  document.getElementById('nRegenBtn').addEventListener('click', function(){ cancelAuto(); CH.reset(); newNL(); clearAll(); renderNL(); });
+
+  // ⑤ 10倍・1/10
+  Array.prototype.forEach.call(document.querySelectorAll('#xops button'), function(b){
+    b.addEventListener('click', function(){
+      var op=b.getAttribute('data-op');
+      if(op==='rand'){ xRand=true; xOp=pick(['x10','d10']); }
+      else{ xRand=false; xOp=op; }
+      CH.reset();
+      newMul(xOp); clearAll(); renderMul();
+    });
+  });
+  document.getElementById('xHintBtn').addEventListener('click', function(){ xHint=!xHint; renderMul(); });
+  function nextMul(){
+    if(xRand) xOp = pick(['x10','d10']);
+    newMul(xOp); clearAll(); renderMul();
+  }
+  document.getElementById('xNextBtn').addEventListener('click', function(){ cancelAuto(); nextMul(); });
+
+  // ⑦ 数をつくる
+  Array.prototype.forEach.call(document.querySelectorAll('#bops button'), function(b){
+    b.addEventListener('click', function(){
+      var q = b.getAttribute('data-bq');
+      if(q==='rand'){ bRand=true; bType=pick(['b1','b2']); }
+      else{ bRand=false; bType=q; }
+      cancelAuto(); CH.reset(); newBig(); clearAll(); renderBig();
+    });
+  });
+  document.getElementById('bHintBtn').addEventListener('click', function(){ bHint=!bHint; renderBig(); });
+  document.getElementById('bZeroBtn').addEventListener('click', function(){ ciFillZeros(stB, bAns, renderBig); });
+  function nextBig(){
+    if(bRand) bType = pick(['b1','b2']);
+    newBig(); clearAll(); renderBig();
+  }
+  document.getElementById('bNextBtn').addEventListener('click', function(){ cancelAuto(); nextBig(); });
+
+  // ⑥ かけ算の筆算
+  Array.prototype.forEach.call(document.querySelectorAll('#fops button'), function(b){
+    b.addEventListener('click', function(){
+      var q = b.getAttribute('data-fq');
+      if(q==='rand'){ fRand=true; fType=pick(['f3','fk']); }
+      else{ fRand=false; fType=q; }
+      cancelAuto(); CH.reset(); newFude(fType); clearAll(); renderFude();
+    });
+  });
+  document.getElementById('fHintBtn').addEventListener('click', function(){ fHint=!fHint; renderFude(); });
+  function nextFude(){
+    if(fRand) fType = pick(['f3','fk']);
+    newFude(fType); clearAll(); renderFude();
+  }
+  document.getElementById('fAgainBtn').addEventListener('click', function(){ fAgain(); });
+  document.getElementById('fzero').addEventListener('click', function(e){
+    var t=e.target;
+    if(!t || !t.getAttribute) return;
+    var z=t.getAttribute('data-z');
+    if(z===null) return;
+    cancelAuto(); fZero(Number(z));
+  });
+  document.getElementById('fNextBtn').addEventListener('click', function(){ cancelAuto(); nextFude(); });
+
+  /* =========================================================
+     タブ切りかえ
+     ========================================================= */
+  var TABS = {
+    shikumi:{ tab:'tabShikumi', area:'shikumiArea', row:'rowShikumi',
+            sub:'位取り表を 見て、位（くらい）を こたえよう。' },
+    make: { tab:'tabMake', area:'makeArea', row:'rowMake',
+            sub:'「1兆を6こ、10億を4こ あわせた数」の ような 問題です。' },
+    nl:   { tab:'tabNL', area:'nlArea', row:'rowNL',
+            sub:'矢印（↑）が さす 目もりは いくつかな？' },
+    mul:  { tab:'tabMul', area:'mulArea', row:'rowMul',
+            sub:'10倍・1/10 で 位が どう うごくかな？' },
+    big:  { tab:'tabBig', area:'bigArea', row:'rowBig',
+            sub:'0から9の 数字で 大きい 整数を つくろう。' },
+    fude: { tab:'tabFude', area:'fudeArea', row:'rowFude',
+            sub:'かける数を タップ。2だんめからは「ゆうれいの 0ちゃん」を 先に 書こう。' }
+  };
+
+  function setMode(m){
+    cancelAuto(); fStop();
+    CH.reset();            // タブを かえたら 数えなおし
+    mode = m;
+    for(var key in TABS){
+      if(!TABS.hasOwnProperty(key)) continue;
+      document.getElementById(TABS[key].tab).classList.toggle('on', key===m);
+      document.getElementById(TABS[key].area).style.display = (key===m) ? '' : 'none';
+      document.getElementById(TABS[key].row).style.display = (key===m) ? '' : 'none';
+    }
+    document.getElementById('sub').textContent = TABS[m].sub;
+
+    var useAns = (m==='shikumi') ? (sType==='w')
+               : (m==='make' || m==='nl' || m==='mul' || m==='fude' || m==='big');
+    document.getElementById('answerBox').style.display = useAns ? '' : 'none';
+    document.getElementById('unitPad').style.display = unitKeysOn() ? '' : 'none';
+    document.getElementById('numPad').style.display = '';
+    ans.style.display = '';
+    clearAll();
+
+    if(m==='shikumi'){ newShikumi(); renderShikumi(); }
+    else if(m==='make'){ ans.placeholder='れい：70'; newMake(); renderMake(); }
+    else if(m==='nl'){ ans.placeholder='れい：6000億'; newNL(); renderNL(); }
+    else if(m==='mul'){ ans.placeholder='れい：560億'; newMul(xOp); renderMul(); }
+    else if(m==='big'){ newBig(); renderBig(); }
+    else if(m==='fude'){ newFude(fType); renderFude(); }
+  }
+  document.getElementById('tabShikumi').addEventListener('click', function(){ if(mode!=='shikumi') setMode('shikumi'); });
+  document.getElementById('tabMake').addEventListener('click',  function(){ if(mode!=='make')  setMode('make'); });
+  document.getElementById('tabNL').addEventListener('click',    function(){ if(mode!=='nl')    setMode('nl'); });
+  document.getElementById('tabMul').addEventListener('click',   function(){ if(mode!=='mul')   setMode('mul'); });
+  document.getElementById('tabBig').addEventListener('click',   function(){ if(mode!=='big')  setMode('big'); });
+  document.getElementById('tabFude').addEventListener('click',  function(){ if(mode!=='fude') setMode('fude'); });
+
+  CH.init({
+    mount: '#chal-mount',
+    total: 10,
+    next: nextAny,             // つぎの問題は いま開いている タブから 出す
+    sound: null,
+    record: false,             // 学校の 共用パソコンを 考えて 記録は 残さない
+    recordKey: 'ookiikazu'
+  });
+
+  setMode('shikumi');
+})();
+</script>
+</body>
+</html>
