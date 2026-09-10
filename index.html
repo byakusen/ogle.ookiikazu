@@ -77,12 +77,8 @@
     font-size:clamp(.88rem,2vh,1.15rem);
   }
   .ops button.on{background:var(--rand);color:#fff;border-color:var(--rand);}
-  /* 2段めのチップ列（「数字で書く」の 書き方えらび）は 少し 小さく */
-  .ops2{margin-bottom:clamp(3px,.7vh,8px);}
-  .ops2 button{
-    padding:clamp(3px,.7vh,7px) clamp(7px,1.1vw,12px);
-    font-size:clamp(.78rem,1.7vh,1rem);border-radius:9px;
-  }
+  /* 「大きい数のしくみ」は 上ぞろえ。3つの 問題で 位取り表が 同じ 場所に 来る */
+  .board>#shikumiArea{margin-top:0;}
 
   .question{text-align:center;font-weight:800;font-size:clamp(1rem,2.4vh,1.45rem);margin:clamp(4px,1vh,10px) 2px 0;line-height:1.6;}
   .question .u{color:#6a7780;font-weight:700;}
@@ -269,13 +265,9 @@
           </div>
 
           <div id="writeArea" style="display:none">
-            <div class="ops ops2" id="wops">
-              <button data-wm="click" class="on">マスをクリック</button>
-              <button data-wm="type">じゅんに書く</button>
-            </div>
+            <div id="wgrid"></div>
             <p class="question">つぎの 数を 数字で 書きましょう。</p>
             <p class="qbig" id="wkanji"></p>
-            <div id="wgrid"></div>
             <p class="revealmul" id="wreveal"></p>
           </div>
         </div>
@@ -924,7 +916,9 @@
     var len = kDigits.length;
     var gEl = document.getElementById('kgrid');
     gEl.onclick = null;
-    gEl.innerHTML = buildGrid({ cells:len, digits:kDigits, places:kHint, mark:kMark });
+    // マスは いつも 13（十兆の位まで）。数は 右づめ。
+    // こうすると 3つの 問題で 位取り表の 場所も 大きさも そろう
+    gEl.innerHTML = buildGrid({ cells:CN, digits:kDigits, places:kHint, mark:kMark });
 
     var q = document.getElementById('kq'), ch = document.getElementById('kchoices');
     var html = '', list = [];
@@ -1036,7 +1030,7 @@
   /* =========================================================
      ② 数字で書く（漢数字 → 数字）
      ========================================================= */
-  var wVal=265000000, wHint=false, wHard=false, wMode='click', wRevealed=false;
+  var wVal=265000000, wHint=false, wHard=false, wRevealed=false;
   var stW = ciMake();
 
   // 4けたのまとまりをつくる（0がとびとびに入りやすい）
@@ -1077,20 +1071,10 @@
 
   function renderWrite(){
     document.getElementById('wkanji').textContent = kanjiNum(wVal);
-    if(wMode==='click'){
-      ciGrid('wgrid', stW, wHint, renderWrite);
-    }else{
-      var gEl=document.getElementById('wgrid');
-      gEl.onclick=null;
-      gEl.innerHTML = buildGrid({ cells:CN, digits:ans.value.replace(/[^0-9]/g,''), places:wHint, mark:-1 });
-    }
+    ciGrid('wgrid', stW, wHint, renderWrite);          // いつも マスをクリック
     document.getElementById('wreveal').textContent = wRevealed ? ('こたえ：'+String(wVal)) : '';
     document.getElementById('sHintBtn').classList.toggle('on', wHint);
-    document.getElementById('wZeroBtn').style.display = (wMode==='click') ? '' : 'none';
-    ans.style.display = (wMode==='click') ? 'none' : '';
-    Array.prototype.forEach.call(document.querySelectorAll('#wops button'), function(b){
-      b.classList.toggle('on', b.getAttribute('data-wm')===wMode);
-    });
+    ans.style.display = 'none';                        // 入力わくは 使わない
   }
 
   /* =========================================================
@@ -2118,7 +2102,6 @@
   }
   ans.addEventListener('input', function(){
     cancelAuto(); hideMaru(); hideBatsu(); sanitize(); xTypedCls='';
-    if(mode==='shikumi' && sType==='w') renderWrite();
     if(mode==='make') renderMake();
     if(mode==='mul') renderMul();
   });
@@ -2128,15 +2111,14 @@
     if(mode==='fude'){ if(fType==='fx') fxKey(k); return; }
     if(mode==='big'){ if(bType==='b1') ciKey(stB, bAns, k, renderBig); return; }
     if(mode==='shikumi'){
-      if(sType!=='w') return;
-      if(wMode==='click'){ ciKey(stW, wVal, k, renderWrite); return; }
+      if(sType==='w') ciKey(stW, wVal, k, renderWrite);
+      return;
     }
     if(mode==='make' && !mIsCount){ ciKey(stM, mAnswer, k, renderMake); return; }
     if(k==='clear'){ ans.value=''; setFb('',''); }
     else if(k==='back'){ ans.value = ans.value.slice(0,-1); }
     else { ans.value += k; }
     xTypedCls='';
-    if(mode==='shikumi' && sType==='w') renderWrite();
     if(mode==='make') renderMake();
     if(mode==='mul') renderMul();
   }
@@ -2148,18 +2130,11 @@
     if(mode==='shikumi' && sType!=='w') return;
     if(mode==='fude'){ if(fType==='fx') fxCheck(); return; }
     if(mode==='big'){ bCheck(); return; }
-    if(mode==='shikumi' && wMode==='click'){ ciCheck(stW, wVal, false, renderWrite); return; }
+    if(mode==='shikumi'){ ciCheck(stW, wVal, false, renderWrite); return; }
     if(mode==='make' && !mIsCount){ ciCheck(stM, mAnswer, false, renderMake); return; }
     var raw = ans.value.trim();
     if(raw===''){ setFb('すうじを いれてね','neutral'); return; }
 
-    if(mode==='shikumi'){
-      if(!/^[0-9]+$/.test(raw)){ setFb('すうじを いれてね','neutral'); return; }
-      if(raw === String(wVal)){ setFb('◯ せいかい！','ok'); showMaru(); scheduleNext(); }
-      else if(Number(raw) === wVal){ setFb('✗ おしい！ 前の 0 は いりません','ng'); showBatsu(); }
-      else{ setFb('✗ もういちど（0の数を たしかめよう）','ng'); showBatsu(); }
-      return;
-    }
     if(mode==='make'){
       if(!/^[0-9]+$/.test(raw)){ setFb('すうじを いれてね','neutral'); return; }
       if(Number(raw) === mAnswer){ setFb('◯ せいかい！','ok'); showMaru(); scheduleNext(); }
@@ -2186,7 +2161,7 @@
   document.getElementById('revealBtn').addEventListener('click', function(){
     if(mode==='shikumi'){
       if(sType!=='w') return;
-      if(wMode==='click') ciSetValue(stW, wVal);
+      ciSetValue(stW, wVal);
       wRevealed = !wRevealed; renderWrite();
     }
     else if(mode==='make'){
@@ -2237,7 +2212,6 @@
 
     // こたえ欄（テンキー）は「数字で書く」のときだけ
     document.getElementById('answerBox').style.display = isW ? '' : 'none';
-    if(isW) ans.placeholder = 'れい：265000000';
 
     if(isW) renderWrite(); else renderKurai();
   }
@@ -2265,13 +2239,6 @@
     kRevealed=!kRevealed; renderKurai();
   });
   document.getElementById('wZeroBtn').addEventListener('click', function(){ ciFillZeros(stW, wVal, renderWrite); });
-  Array.prototype.forEach.call(document.querySelectorAll('#wops button'), function(b){
-    b.addEventListener('click', function(){
-      wMode = b.getAttribute('data-wm');
-      ciReset(stW); ans.value=''; wRevealed=false; setFb('','');
-      hideMaru(); hideBatsu(); renderWrite();
-    });
-  });
   document.getElementById('wHardBtn').addEventListener('click', function(){
     wHard = !wHard;
     document.getElementById('wHardBtn').textContent = wHard ? 'かんたん（億）' : 'むずかしい（兆）';
