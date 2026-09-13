@@ -85,6 +85,21 @@
   .question{text-align:center;font-weight:800;font-size:clamp(1rem,2.4vh,1.45rem);margin:clamp(4px,1vh,10px) 2px 0;line-height:1.6;}
   .question .u{color:#6a7780;font-weight:700;}
   .qbig{text-align:center;font-weight:900;font-size:clamp(1.2rem,3.3vh,2.05rem);margin:clamp(2px,.6vh,8px) 0;letter-spacing:.03em;}
+  /* たし算・ひき算は 字が みじかいので 大きく */
+  .qbig.big{font-size:clamp(1.6rem,4.6vh,2.9rem);}
+  /* 漢数字の「兆・億・万」を 赤い ○で かこむ（ヒント）。
+     ○は うしろに かさねて かくので、出しても 字の 場所は うごかない */
+  .qbig .uc{position:relative;display:inline-block;}
+  .qbig.hint .uc::after{
+    content:'';position:absolute;left:50%;top:50%;width:1.36em;height:1.36em;
+    transform:translate(-50%,-50%);border:3px solid var(--red);border-radius:50%;pointer-events:none;
+  }
+  /* 大小くらべの ㋐㋑は、上の 問題文と 下の えらび肢から すこし はなす */
+  .qbig.cmp{margin:clamp(10px,2.6vh,28px) 0;}
+  /* 場所とりの 位取り表に 筆算を かさねる（あわせた数タブの ヒント） */
+  .movl{position:relative;}
+  .movlin{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;}
+  .movlin svg{width:auto;height:100%;max-width:100%;}
   #xtyped{
     width:min(100%,440px);margin:0 auto;
     border:3px solid var(--keyline);border-radius:14px;background:#fdfdfb;
@@ -123,7 +138,10 @@
   .maru,.batsu{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
     pointer-events:none;z-index:5;opacity:0;visibility:hidden;transition:opacity .55s ease, visibility .55s ease;}
   .maru.show,.batsu.show{opacity:1;visibility:visible;transition:opacity .12s ease, visibility 0s;}
-  .maru img{width:34%;max-width:190px;height:auto;filter:drop-shadow(0 6px 14px rgba(224,36,36,.25));}
+  /* はなまるは もとの 2ばい。たてが はみ出す ときは
+     object-fit で 形を たもったまま 縮める */
+  .maru img{width:68%;max-width:380px;height:auto;max-height:100%;object-fit:contain;
+    filter:drop-shadow(0 6px 14px rgba(224,36,36,.25));}
   .batsu svg{width:28%;max-width:150px;height:auto;filter:drop-shadow(0 6px 14px rgba(224,36,36,.25));}
   .maru.show img,.batsu.show svg{animation:pop .5s cubic-bezier(.18,1.5,.4,1) both;}
   @keyframes pop{0%{transform:scale(.2) rotate(-18deg);opacity:0;}60%{transform:scale(1.12) rotate(6deg);opacity:1;}100%{transform:scale(1) rotate(0);opacity:1;}}
@@ -193,6 +211,14 @@
      あわせた数タブは 4つの 問題ぜんぶに 同じだけ 足すので、
      位取り表が あっても なくても チップ列の 高さは そろったまま */
   #mq,#xq,#bq{padding-top:var(--chipgap);}
+  /* たし算・ひき算だけ 字を 大きくするので、ほかの 3つにも 同じ 高さを もたせる。
+     こうしないと チップ列が 上下に うごく（#mspace の 高さそろえと 同じ かんがえ方） */
+  #mq{min-height:calc(var(--chipgap) + clamp(1.6rem,4.6vh,2.9rem) * 1.45);}
+  /* ヒントの 1行（「1兆が（56－44）こ ぶん。」）は 出ていない ときも
+     場所を あけておく。出した ときに 問題文が 上に うごかない */
+  #mnote{min-height:1.45em;line-height:1.45;}
+  /* 10倍・1/10 の ヒントも 2行ぶん 先に 場所を あけておく */
+  #xnote{min-height:2.9em;line-height:1.45;}
   /* 筆算タブ。はなした ぶんだけ 筆算の 高さの 上限を さげるので、
      ぜんたいが 画面から はみ出さない */
   #fq,#fxArea>.question{padding-top:var(--fgap);}
@@ -230,6 +256,66 @@
   .fxbox.ng{border-color:var(--ng);color:var(--ng);}
   #fxgrid svg{max-height:calc(26vh - var(--fgap));}
 
+  /* =========================================================
+     ⑩ ４けた練習（フラッシュカード）
+     ・タブは この1つだけ 赤。練習用だと すぐ 分かるように
+     ・左＝カード／右＝設定。カードの 高さは 固定なので
+       「かくす」を おしても 画面が うごかない（8節の 考え方）
+     ========================================================= */
+  #tabFlash{background:#fdecea;color:#c0201d;border-color:#f0b6b0;}
+  #tabFlash.on{background:var(--red);color:#fff;border-color:var(--red);}
+
+  #flcard{
+    position:relative;
+    display:flex;align-items:center;justify-content:center;
+    width:min(100%,760px);margin:clamp(6px,1.6vh,18px) auto 0;
+    height:clamp(120px,30vh,280px);
+    border:3px solid var(--keyline);border-radius:20px;background:#fdfdfb;
+  }
+  #fldigits,#flmask{
+    font-weight:900;line-height:1;letter-spacing:.1em;
+    /* たてにも よこにも 入るように。スマホでも はみ出さない */
+    font-size:clamp(2.2rem, min(15vh, 15vw), 8.4rem);
+    font-variant-numeric:tabular-nums;
+  }
+  #fldigits{color:var(--ink);transition:opacity .22s ease;}
+  #fldigits.off{opacity:0;}                 /* 場所は とったまま 消す */
+  /* かくしている あいだの うすい「?」。カードが こわれて 見えないように */
+  #flmask{position:absolute;color:#dfe6eb;pointer-events:none;}
+
+  /* 右がわの 設定パネル */
+  .fset{border:2px solid var(--rule);border-radius:12px;padding:clamp(6px,1.1vh,11px) 10px;}
+  .fset h3{
+    margin:0 0 clamp(4px,.8vh,8px);font-weight:800;color:#6a7780;
+    font-size:clamp(.8rem,1.8vh,1.02rem);
+  }
+  .fchips{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;}
+  .fchips button{
+    background:#eef2f4;color:#3a4750;border:2px solid var(--rule);box-shadow:none;
+    padding:clamp(5px,1vh,9px) 2px;border-radius:10px;
+    font-size:clamp(.82rem,1.9vh,1.08rem);
+  }
+  .fchips button.on{background:var(--red);color:#fff;border-color:var(--red);}
+  .fopt{
+    display:flex;align-items:center;gap:8px;line-height:1.4;font-weight:700;
+    font-size:clamp(.78rem,1.75vh,1rem);cursor:pointer;
+  }
+  .fopt+.fopt{margin-top:clamp(4px,.9vh,9px);}
+  .fopt input[type="checkbox"]{
+    flex:0 0 auto;width:1.3em;height:1.3em;accent-color:var(--red);cursor:pointer;
+  }
+  .fhelp{margin:clamp(4px,.9vh,8px) 0 0;color:#8a959c;line-height:1.45;
+    font-size:clamp(.68rem,1.5vh,.86rem);}
+  .fstep{
+    background:#eef2f4;color:#3a4750;border:2px solid var(--rule);box-shadow:none;
+    width:2.3em;padding:clamp(3px,.7vh,7px) 0;border-radius:9px;
+    font-size:clamp(.9rem,2vh,1.15rem);
+  }
+  #flSecLbl{flex:1 1 auto;text-align:center;font-weight:900;}
+  .frow{margin-top:clamp(5px,1vh,10px);}
+  .frow button{width:100%;}
+  #flAutoBtn.on{background:var(--red);}
+
   /* 10問チャレンジ（challenge10 のCSSを この画面の大きさに あわせる） */
   #chal-mount{margin-left:auto;}
   #chal-wrap #btn-challenge{
@@ -257,8 +343,9 @@
     <button id="tabMake">あわせた数</button>
     <button id="tabNL">数直線</button>
     <button id="tabMul">10倍・1/10</button>
-    <button id="tabBig">数をつくる</button>
+    <button id="tabBig">応用問題</button>
     <button id="tabFude">かけ算の筆算</button>
+    <button id="tabFlash">４けた練習</button>
   </div>
 
   <div class="main">
@@ -328,6 +415,7 @@
           <p id="xtyped"></p>
           <p class="note" id="xnote"></p>
           <p class="revealmul" id="xreveal"></p>
+          <div id="xspace" aria-hidden="true"></div>
         </div>
 
         <div id="bigArea" style="display:none">
@@ -372,6 +460,15 @@
           <p class="revealmul" id="freveal"></p>
         </div>
 
+        <div id="flashArea" style="display:none">
+          <p class="question" id="flq"></p>
+          <div id="flcard">
+            <span id="flmask" aria-hidden="true" style="display:none">????</span>
+            <span id="fldigits" aria-live="polite">1000</span>
+          </div>
+          <p class="note" id="flnote">スペース＝つぎの数　／　H＝かくす・見せる</p>
+        </div>
+
         <div class="maru" id="maru" aria-hidden="true">
           <img src="https://raw.githubusercontent.com/byakusen/hanamaru/refs/heads/main/hanamaru2.png" alt="はなまる">
         </div>
@@ -398,8 +495,8 @@
       </div>
       <div class="row" id="rowNL" style="display:none">
         <button class="b-hint" id="nHintBtn">ヒント（数を入れる）</button>
-        <button class="b-rand" id="nRandBtn">矢印をかえる</button>
-        <button class="b-regen" id="nRegenBtn">1目もりをかえる</button>
+        <button class="b-rand" id="nRandBtn">問題をかえる</button>
+        <button class="b-regen" id="nRegenBtn">数直線をかえる</button>
       </div>
       <div class="row" id="rowMul" style="display:none">
         <button class="b-hint" id="xHintBtn">ヒント（位のうごき）</button>
@@ -414,6 +511,38 @@
         <button class="b-hint" id="fHintBtn">ヒント（やり方）</button>
         <button class="b-regen" id="fAgainBtn">もう一度</button>
         <button class="b-rand" id="fNextBtn">つぎの問題</button>
+      </div>
+      <div class="row" id="rowFlash" style="display:none">
+        <button class="b-rand" id="flNextBtn">つぎの数</button>
+        <button class="b-regen" id="flSpeakBtn">読み上げ</button>
+        <button class="b-hint" id="flHideBtn">かくす</button>
+      </div>
+    </div>
+
+    <!-- ４けた練習の 設定（このタブの ときだけ こたえ欄と 入れかわる） -->
+    <div class="side" id="flashSide" style="display:none">
+      <div class="fset">
+        <h3>けた数</h3>
+        <div class="fchips" id="flDigitChips">
+          <button data-d="2">２けた</button>
+          <button data-d="3">３けた</button>
+          <button data-d="4" class="on">４けた</button>
+        </div>
+      </div>
+      <div class="fset">
+        <h3>0 の 入れ方</h3>
+        <label class="fopt"><input type="checkbox" id="flZero" checked><span>とちゅうの 位に かならず 0 を 入れる</span></label>
+        <p class="fhelp">一・十・百の どれかに 0 が 入ります。いちばん 上の 位は 0に なりません。</p>
+      </div>
+      <div class="fset">
+        <h3>じどうで めくる</h3>
+        <div class="fopt">
+          <button class="fstep" data-sec="-1">−</button>
+          <span id="flSecLbl">3 秒</span>
+          <button class="fstep" data-sec="1">＋</button>
+        </div>
+        <div class="frow"><button class="b-regen" id="flAutoBtn">スタート</button></div>
+        <label class="fopt" style="margin-top:clamp(5px,1vh,10px)"><input type="checkbox" id="flAutoSpeak"><span>じどうで 読み上げる</span></label>
       </div>
     </div>
 
@@ -710,7 +839,8 @@
   /* 10問チャレンジ（challenge10）。読みこめていなくても アプリは動く */
   var CH = (typeof Challenge10 !== 'undefined') ? Challenge10 : {
     init:function(){}, done:function(){}, miss:function(){},
-    newProblem:function(){}, reset:function(){}, isOn:function(){ return false; }
+    newProblem:function(){}, reset:function(){}, stop:function(){},
+    isOn:function(){ return false; }
   };
 
   /* =========================================================
@@ -742,6 +872,10 @@
     if(m) s += kanji4(m)+'万';
     if(r) s += kanji4(r);
     return s;
+  }
+  // 漢数字の「兆・億・万」を まるで かこめるように つつむ（ヒントで 赤い ○に なる）
+  function markUnits(s){
+    return String(s).replace(/[兆億万]/g, function(c){ return '<span class="uc">'+c+'</span>'; });
   }
   // 数を「1兆400億」のような言い方に
   function bigLabel(v){
@@ -780,7 +914,9 @@
 
   /* =========================================================
      位取り表（SVG）
-     opt = { cells, digits, places, mark, dim }
+     opt = { cells, digits, chars, sel, mark, units, hl, click }
+       units … 下の「兆・億・万」を 出す（ヒントの とき だけ true）
+       hl    … 赤い しかく。{ base:きじゅんの位, top:こたえの いちばん上の位 }
      ========================================================= */
   var GC = 58;
   function buildGrid(opt){
@@ -820,32 +956,39 @@
       }
     }
 
-    // 位の名前（ヒント）
-    if(opt.places){
-      for(var p=0;p<n;p++){
-        var fr = n-1-p, cx2 = PADL + p*GC + GC/2;
-        var nm = PLACE[fr] || '';
-        s += '<text x="'+cx2+'" y="20" text-anchor="middle" font-size="17" font-weight="800" fill="var(--hintlbl)">'+nm+'</text>';
-      }
-    }
-
     // ▼ しるし
     if(mark>=0 && mark<n){
       var mcol = n-1-mark, mx = PADL + mcol*GC + GC/2;
       s += '<path d="M '+(mx-13)+' '+(TOP-22)+' L '+(mx+13)+' '+(TOP-22)+' L '+mx+' '+(TOP-4)+' Z" fill="var(--arrow)"/>';
     }
 
-    // 下の「兆・億・万」と「一の位」
-    var labels = [[12,'兆'],[8,'億'],[4,'万']];
-    for(var g=0; g<labels.length; g++){
-      var fr0 = labels[g][0];
-      if(fr0 <= n-1){
-        var cxg = PADL + (n-1-fr0)*GC + GC/2;     // その位（一兆・一億・一万）のマスの下
-        s += '<text x="'+cxg+'" y="'+(yb+27)+'" text-anchor="middle" font-size="24" font-weight="800" fill="#8a97a0">'+labels[g][1]+'</text>';
+    // 下の「兆・億・万」。ヒントの ときだけ 出す（opt.units）
+    if(opt.units){
+      var labels = [[12,'兆'],[8,'億'],[4,'万']];
+      for(var g=0; g<labels.length; g++){
+        var fr0 = labels[g][0];
+        if(fr0 <= n-1){
+          var cxg = PADL + (n-1-fr0)*GC + GC/2;   // その位（一兆・一億・一万）のマスの下
+          s += '<text x="'+cxg+'" y="'+(yb+27)+'" text-anchor="middle" font-size="24" font-weight="800" fill="#8a97a0">'+labels[g][1]+'</text>';
+        }
       }
     }
+    // 「一の位」は きじゅんに なるので いつも 出す
     var lx = PADL + (n-1)*GC + GC/2;
     s += '<text x="'+lx+'" y="'+(yb+26)+'" text-anchor="middle" font-size="16" font-weight="800" fill="#c08a00">一の位</text>';
+
+    /* 赤い しかく（ヒント）
+       opt.hl = { base:きじゅんに する 位, top:こたえの いちばん 上の 位 }
+       こたえが 入る 位 ぜんぶを ひとまとめに かこむ。右から かぞえた ばんごうで わたす  */
+    if(opt.hl && opt.hl.base>=0 && opt.hl.base<=n-1){
+      var hb = opt.hl.base;
+      var ht = (opt.hl.top===undefined || opt.hl.top<hb) ? hb : opt.hl.top;
+      if(ht>n-1) ht = n-1;
+      var hx0 = Math.max(2, PADL + (n-1-ht)*GC - 6);
+      var hx1 = Math.min(VW-2, PADL + (n-hb)*GC + 6);
+      s += '<rect x="'+hx0+'" y="'+(TOP-14)+'" width="'+(hx1-hx0)+'" height="'+(H+48)+'" rx="7" '+
+           'fill="none" stroke="var(--red)" stroke-width="2.5" opacity=".8"/>';
+    }
 
     if(opt.click){
       for(var cc=0; cc<n; cc++){
@@ -901,12 +1044,14 @@
     else if(mode==='mul') nextMul();
     else if(mode==='fude') nextFude();
     else if(mode==='big') nextBig();
+    else if(mode==='flash') flNew();
   }
   function scheduleNext(){
     cancelAuto();
     // チャレンジ中は 数を かぞえてから 進む（次に進めるのは チャレンジ側）
     if(CH.isOn()){ CH.done(); return; }
-    autoTimer = setTimeout(function(){ autoTimer=null; nextAny(); }, 1900);
+    // はなまるは 1秒で 消える。そのあと 2.2秒ほど 今の 問題を 見せてから つぎへ
+    autoTimer = setTimeout(function(){ autoTimer=null; nextAny(); }, 3200);
   }
   function setFb(msg, cls){ fb.textContent = msg; fb.className = 'fb ' + (cls||''); }
   function clearAll(){ ans.value=''; setFb('',''); hideMaru(); hideBatsu(); }
@@ -945,7 +1090,7 @@
     gEl.onclick = null;
     // マスは いつも 13（十兆の位まで）。数は 右づめ。
     // こうすると 3つの 問題で 位取り表の 場所も 大きさも そろう
-    gEl.innerHTML = buildGrid({ cells:CN, digits:kDigits, places:kHint, mark:kMark });
+    gEl.innerHTML = buildGrid({ cells:CN, digits:kDigits, units:kHint, mark:kMark });
 
     var q = document.getElementById('kq'), ch = document.getElementById('kchoices');
     var html = '', list = [];
@@ -1043,10 +1188,10 @@
     if(st.sel>=st.n) st.sel=-1;
     render(); ciCheck(st,target,true,render);
   }
-  function ciGrid(gridId,st,places,render){
+  function ciGrid(gridId,st,units,render,hl){
     var gEl=document.getElementById(gridId);
-    gEl.innerHTML = buildGrid({ cells:st.n, chars:st.cells, places:places, mark:-1,
-                                sel:st.sel, click:!st.done });
+    gEl.innerHTML = buildGrid({ cells:st.n, chars:st.cells, units:units, mark:-1,
+                                sel:st.sel, click:!st.done, hl:hl });
     gEl.onclick = function(e){
       var t=e.target, i=(t && t.getAttribute) ? t.getAttribute('data-i') : null;
       if(i===null || i===undefined || st.done) return;
@@ -1101,7 +1246,10 @@
   }
 
   function renderWrite(){
-    document.getElementById('wkanji').textContent = kanjiNum(wVal);
+    // ヒントの ときは「兆・億・万」を 赤い ○で かこむ。まとまりが 見えて 読みやすい
+    var wk = document.getElementById('wkanji');
+    wk.innerHTML = markUnits(kanjiNum(wVal));
+    wk.className = 'qbig' + (wHint ? ' hint' : '');
     ciGrid('wgrid', stW, wHint, renderWrite);          // いつも マスをクリック
     document.getElementById('wreveal').textContent = wRevealed ? ('こたえ：'+String(wVal)) : '';
     document.getElementById('sHintBtn').classList.toggle('on', wHint);
@@ -1155,7 +1303,7 @@
 
   function renderRead(){
     document.getElementById('rgrid').innerHTML =
-      buildGrid({ cells:CN, digits:String(rVal), places:rHint, mark:-1 });
+      buildGrid({ cells:CN, digits:String(rVal), units:rHint, mark:-1 });
 
     var ch=document.getElementById('rchoices'), html='';
     for(var i=0;i<rList.length;i++){
@@ -1192,10 +1340,16 @@
   var mText='', mAnswer=0, mIsCount=false;
   var mUnit=false, mHintTx='';        // mUnit＝こたえを「◯億」の 形で 書く問題
   var stM = ciMake();
+  /* ヒントで 使う もの
+       mHL   … 赤い しかく。{ base:きじゅんの位, top:こたえの いちばん上の位 }
+               「1億を830こ」なら base＝一億の位、top＝百億の位（830は 3けた だから）
+       mBase … 「□こ」で 位取り表に 入れて 見せる 数（4億 など）
+       mA4/mB4/mOp/mUn … たし算・ひき算の 筆算に 使う 数・しるし・単位  */
+  var mHL=null, mBase=0, mA4=0, mB4=0, mOp='＋', mUn='億';
 
   function newMake(){
     CH.newProblem();
-    mUnit=false; mHintTx='';
+    mUnit=false; mHintTx=''; mHL=null; mBase=0;
     var t = mType;
     if(t==='m1'){                     // 1兆を6こ、10億を4こ あわせた数
       var i1 = pick([12,11,10,9,8]);
@@ -1205,7 +1359,7 @@
       var a = rnd(1,9), b = rnd(1,9);
       mText = UNITV[i1]+' を '+a+' こ、'+UNITV[i2]+' を '+b+' こ あわせた数';
       mAnswer = a*pow10(i1) + b*pow10(i2);
-      mIsCount = false;
+      mIsCount = false;               // 赤い しかくは なし（ヒントは 位の 名前だけ）
     }else if(t==='m2'){               // 1億を180こ、1万を370こ 集めた数
       var i3 = pick([8,4]);           // 一億の位 か 一万の位 から
       var c;
@@ -1216,6 +1370,8 @@
       }
       mText = UNITV[i3]+' を '+c+' こ 集めた数';
       mAnswer = c*pow10(i3);
+      // 1億を 830こ なら こたえは 830億。3けた ぶん 上の 百億の位まで かこむ
+      mHL = { base:i3, top:i3 + String(c).length - 1 };
       mIsCount = false;
     }else if(t==='m3'){               // 70億は 10億を □こ 集めた数
       var i4 = pick([11,10,9,8,7]);
@@ -1223,6 +1379,9 @@
       var val = cnt*pow10(i4);
       mText = bigLabel(val)+' は、'+UNITV[i4]+' を □ こ 集めた数です。□ に 入る 数は？';
       mAnswer = cnt;
+      mBase = val;                    // ヒントで 位取り表に 入れて 見せる 数
+      // 4億 は 1000万を 40こ。40は 2けた なので 千万の位から 一億の位まで
+      mHL = { base:i4, top:i4 + String(cnt).length - 1 };
       mIsCount = true;
     }else{                            // 億・兆を 単位に した たし算・ひき算
       var u4 = (rnd(0,9)<7) ? 8 : 12;              // 億が 多め
@@ -1241,24 +1400,70 @@
       }
       mText   = a4+un+sign+b4+un+' ＝';
       mAnswer = (plus ? a4+b4 : a4-b4) * pow10(u4);
+      mA4 = a4; mB4 = b4; mOp = plus ? '＋' : '－'; mUn = un;   // ヒントの 筆算に 使う
       mHintTx = '1'+un+' が （'+a4+sign+b4+'） こ ぶん。';
       mIsCount = true; mUnit = true;
     }
     mHint=false; mRevealed=false; ciReset(stM);
   }
 
+  /* たし算・ひき算の ヒント。「70 ＋ 67」の 形に たてに そろえた 筆算を かく。
+     こたえは 書かない（線の 下は 空けておく）ので、答えは 自分で 出す  */
+  function mFudeSvg(){
+    var sa = String(mA4), sb = String(mB4);
+    var n = Math.max(sa.length, sb.length);
+    var CW = 44, PADX = 10, SW = 46, UW = 46;        // マスのはば・よはく・しるし・単位
+    var right = PADX + SW + n*CW;                    // 数字の 右はし
+    var VW = right + UW + PADX, VH = 186;
+    var y1 = 54, y2 = 112, ly = 130;                 // 1だんめ・2だんめ・よこ線
+    var s = '<svg viewBox="0 0 '+VW+' '+VH+'" xmlns="http://www.w3.org/2000/svg">';
+    function row(str, y){
+      for(var i=0;i<str.length;i++){
+        var x = right - (str.length-i)*CW + CW/2;
+        s += '<text x="'+x+'" y="'+y+'" text-anchor="middle" font-size="46" font-weight="800" fill="var(--ink)">'+
+             str.charAt(i)+'</text>';
+      }
+      // 右はしに 単位（億 か 兆）。何の まとまりを たしているかが 見える
+      s += '<text x="'+(right+UW/2)+'" y="'+y+'" text-anchor="middle" font-size="36" font-weight="800" fill="var(--ink)">'+
+           mUn+'</text>';
+    }
+    row(sa, y1);
+    row(sb, y2);
+    s += '<text x="'+(PADX+SW/2)+'" y="'+y2+'" text-anchor="middle" font-size="44" font-weight="800" fill="var(--ink)">'+
+         mOp+'</text>';
+    s += '<line x1="'+PADX+'" y1="'+ly+'" x2="'+right+'" y2="'+ly+'" stroke="var(--line)" stroke-width="4" stroke-linecap="round"/>';
+    s += '</svg>';
+    return s;
+  }
+
   function renderMake(){
-    document.getElementById('mq').textContent = mText;
+    var q = document.getElementById('mq');
+    q.textContent = mText;
+    q.className = 'qbig' + (mUnit ? ' big' : '');    // たし算・ひき算は 大きい字で
     var g = document.getElementById('mgrid'), sp = document.getElementById('mspace');
     if(mIsCount){
       g.innerHTML=''; g.onclick=null;
-      // 位取り表を 使わない 問題でも、同じ 高さを 下に あけておく。
-      // こうすると チップ列と 問題文が いつも 同じ 場所に 来る
-      sp.innerHTML = '<div style="visibility:hidden">' +
+      if(mType==='m3'){
+        // 「□こ」は もとの 数を 入れた 位取り表を はじめから 見せる。
+        // ヒントで 赤い しかくと 位の 名前が つく（場所とりの 表と 同じ 大きさ）
+        sp.innerHTML = buildGrid({ cells:CN, digits:String(mBase), units:mHint,
+                                   hl:(mHint ? mHL : null), mark:-1 });
+        sp.setAttribute('aria-hidden','false');
+      }else{
+        // 位取り表を 使わない 問題でも、同じ 高さを 下に あけておく。
+        // こうすると チップ列と 問題文が いつも 同じ 場所に 来る
+        var hidden = '<div style="visibility:hidden">' +
                      buildGrid({ cells:CN, digits:'', mark:-1 }) + '</div>';
+        // たし算・ひき算の ヒントは、その 空けた ところに 筆算を かさねる（高さは かわらない）
+        sp.innerHTML = (mHint && mType==='m4')
+          ? '<div class="movl">'+hidden+'<div class="movlin">'+mFudeSvg()+'</div></div>'
+          : hidden;
+        sp.setAttribute('aria-hidden','true');
+      }
     }else{
-      sp.innerHTML = '';
-      ciGrid('mgrid', stM, mHint, renderMake);
+      sp.innerHTML = ''; sp.setAttribute('aria-hidden','true');
+      // ヒントで きじゅんの 位（1万 など）を 赤い しかくで かこむ
+      ciGrid('mgrid', stM, mHint, renderMake, mHint ? mHL : null);
     }
     ans.style.display = mIsCount ? '' : 'none';
     ans.placeholder = mUnit ? 'れい：8億' : 'れい：70';
@@ -1267,7 +1472,9 @@
     document.getElementById('mZeroBtn').style.display = mIsCount ? 'none' : '';
     document.getElementById('mreveal').textContent =
       mRevealed ? ('こたえ：'+(mUnit ? bigLabel(mAnswer) : String(mAnswer))) : '';
-    document.getElementById('mHintBtn').classList.toggle('on', mHint);
+    var hb = document.getElementById('mHintBtn');
+    hb.classList.toggle('on', mHint);
+    hb.textContent = (mType==='m4') ? 'ヒント（筆算）' : 'ヒント（位を出す）';
   }
 
   /* =========================================================
@@ -1392,6 +1599,12 @@
         : '10倍すると、位は <b>1つ 左</b> へ うつり、0 が 1こ ふえます。');
     }else{ note.textContent=''; }
 
+    // ヒントの 位取り表。出ていない ときも 同じ 高さを あけておくので、
+    // ヒントを 出しても 問題文や チップ列は うごかない
+    document.getElementById('xspace').innerHTML = xHint
+      ? buildGrid({ cells:CN, digits:String(xBase), units:true, mark:-1 })
+      : '<div style="visibility:hidden">'+buildGrid({ cells:CN, digits:'', mark:-1 })+'</div>';
+
     document.getElementById('xreveal').textContent =
       xRevealed ? ('こたえ：'+bigLabel(xAnswer())+'（'+String(xAnswer())+'）') : '';
     document.getElementById('xHintBtn').classList.toggle('on', xHint);
@@ -1415,7 +1628,7 @@
   var fType='f3', fRand=false, fHint=false, fRevealed=false, stF=null;
   var FNUM = ['①','②','③','④','⑤'];
   // アニメーションの はやさ（ms）
-  var FSPD = { arrow:460, carry:360, digit:500, col:400, gap:560 };
+  var FSPD = { arrow:460, carry:360, digit:500, col:400, gap:560, line:560 };
   var fTimer = null;
   function fStop(){ if(fTimer){ clearTimeout(fTimer); fTimer=null; }
                     if(typeof fxStop==='function') fxStop(); }
@@ -1466,7 +1679,7 @@
     }
     var st = { ra:ra, rb:rb, pa:pa, qb:qb, zeros:zeros, base:zeros,
                prod:prod, fin:fin, cols:cols, rows:rows, cells:cells,
-               carries:[], arrows:[], ghosts:{}, hi:-1, last:null,
+               carries:[], arrows:[], ghosts:{}, hi:-1, last:null, sumLine:false,
                seq:[], pi:0, ai:0, stage:'pick', done:false };
     st.seq = fPhases(st);
     st.stage = st.seq[0] ? (st.seq[0].kind==='mul' ? 'pick'
@@ -1555,8 +1768,9 @@
                    msg:  fWriteMsg(st, st.rows[r].digit, j),
                    acts: mulActs(r, st.rows[r].digit, j) });
       }
+      // 部分積が そろったら、まず こたえの 線を 左から 右へ 引く
       seq.push({ kind:'add', row:sumIdx, msg:ppIdx.length+'だんの 答えを、一の位から たし算します。',
-                 acts: addActs(sumIdx, ppIdx) });
+                 acts: [{ t:'line' }].concat(addActs(sumIdx, ppIdx)) });
     }else{
       var bd = String(st.rb), d1=0, sh1=0, dd;
       for(var i2=0;i2<bd.length;i2++){
@@ -1599,6 +1813,9 @@
     setFb('','');
   }
 
+  /* 手じゅんを 文で 出す ヒント。いまは 使っていない
+     （ヒントは 筆算の 中の 点線の 赤しかくに かえた → buildFude）。
+     文の ヒントに もどしたい ときの ために のこしてある  */
   function fHintText(){
     var st=stF, t=[], i=0, hasPP=false;
     for(var r=0;r<st.rows.length;r++){
@@ -1622,6 +1839,7 @@
     else if(a.t==='ghost'){ st.cells[a.r][a.c]='0'; st.ghosts[a.r+','+a.c]=1; st.last={ t:'digit', r:a.r, c:a.c }; }
     else if(a.t==='tail'){ st.cells[a.r][a.c]='0'; st.last={ t:'digit', r:a.r, c:a.c }; }
     else if(a.t==='col'){ st.hi=a.c; st.last=null; }
+    else if(a.t==='line'){ st.sumLine=true; st.last={ t:'line' }; }   // こたえの 線を 引く
   }
   function fStep(){
     var st=stF, ph=st.seq[st.pi];
@@ -1707,12 +1925,26 @@
     var hasPP=false;
     for(r=0;r<st.rows.length;r++) if(st.rows[r].kind==='pp') hasPP=true;
 
+    var rightR = n-1-st.base;
+    // × の 列。ここが かけ算の 線の 左はし
+    var xcol = rightR - Math.max(String(st.ra).length, String(st.rb).length);
+    // ゆうれいの0も 入れた 右はし。ここが かけ算の 線の 右はし
+    var mulRight = rightR + Math.max(st.pa, st.qb);
+
     var lines=[];
-    lines.push({ y:y+2, dash:false }); y += 14;
+    // ① かけ算の 線 … 数字の ある ところ だけ
+    lines.push({ y:y+2, kind:'mul',
+                 x1:(xcol>=0 ? PADL+xcol*FC : PADL-FC), x2:PADL+(mulRight+1)*FC });
+    y += 14;
     var rowY=[];
     for(r=0;r<st.rows.length;r++){
       var kd = st.rows[r].kind;
-      if(kd==='sum' && hasPP){ lines.push({ y:y+2, dash:false }); y += 14; }
+      if(kd==='sum' && hasPP){
+        // ② こたえの 線 … こたえの けた数の ぶんだけ。部分積が そろってから 引く
+        var sumLen = String(st.fin).length;
+        lines.push({ y:y+2, kind:'sum', x1:PADL+Math.max(0,n-sumLen)*FC, x2:PADL+n*FC });
+        y += 14;
+      }
       rowY[r] = y; y += FH;
     }
     var VH = y + 8;
@@ -1728,10 +1960,15 @@
       }
       return t;
     }
-    function hline(yy, dash){
-      return '<line x1="'+(PADL-34)+'" y1="'+yy+'" x2="'+(PADL+n*FC)+'" y2="'+yy+
-             '" stroke="var(--line)" stroke-width="3"'+(dash?' stroke-dasharray="7 5"':'')+'/>';
+    // anim＝true の ときは 左から 右へ 引かれて いく
+    function hline(ln, anim){
+      var L = ln.x2 - ln.x1;
+      var sty = anim ? ' style="stroke-dasharray:'+L+';stroke-dashoffset:'+L+
+                       ';animation:fdraw .5s ease-out forwards"' : '';
+      return '<line x1="'+ln.x1+'" y1="'+ln.y+'" x2="'+ln.x2+'" y2="'+ln.y+
+             '" stroke="var(--line)" stroke-width="3" stroke-linecap="round"'+sty+'/>';
     }
+    // ななめ線。いまは 使っていない（とった 0を 消さない ことに した）
     function slash(fromCol, toCol, yy){
       var t='';
       for(var c2=fromCol;c2<=toCol;c2++){
@@ -1767,27 +2004,28 @@
               '" rx="6" fill="rgba(58,134,214,.12)"/>';
     }
 
-    var rightR = n-1-st.base;
     // かけられる数
     body += digitsAt(String(st.ra), rightR, yA, 'var(--ink)');
     if(st.pa){
+      // とった 0は うすい色。ななめ線では 消さない（先生の 指示）
       body += digitsAt(new Array(st.pa+1).join('0'), rightR+st.pa, yA, '#c3ccd2');
-      body += slash(rightR+1, rightR+st.pa, yA);
     }
     // ×かける数
     var rbs = String(st.rb);
     body += digitsAt(rbs, rightR, yB, 'var(--ink)');
     if(st.qb){
       body += digitsAt(new Array(st.qb+1).join('0'), rightR+st.qb, yB, '#c3ccd2');
-      body += slash(rightR+1, rightR+st.qb, yB);
     }
-    // × は 筆算ぜんたいの 左どなり
-    var xcol = rightR - Math.max(String(st.ra).length, rbs.length);
+    // × は 筆算ぜんたいの 左どなり（xcol は うえで 計算ずみ）
     var xx = (xcol>=0) ? cx(xcol) : (PADL-FC/2);
     body += '<text x="'+xx+'" y="'+(yB+FH*0.74)+'" text-anchor="middle" font-size="42" font-weight="800" fill="var(--ink)">×</text>';
 
-    // よこ線
-    for(var L2=0;L2<lines.length;L2++) body += hline(lines[L2].y, lines[L2].dash);
+    // よこ線。こたえの 線は 部分積が そろう まで 出さない
+    for(var L2=0;L2<lines.length;L2++){
+      var ln = lines[L2];
+      if(ln.kind==='sum' && !st.sumLine) continue;
+      body += hline(ln, ln.kind==='sum' && st.last && st.last.t==='line');
+    }
 
     // 各段の 数字（ゆうれいの0ちゃんは うすい色）
     for(r=0;r<st.rows.length;r++){
@@ -1827,6 +2065,26 @@
                 '" fill="rgba(242,96,42,.10)" stroke="var(--arrow)" stroke-width="3" stroke-dasharray="6 5"/>';
       }
     }
+    /* ヒント（点線の 赤しかく）
+       ・かける数を タップする 場面 … つぎに おす 数字を 1つだけ かこむ。
+         タップして 計算が はじまると（stage が run に なる）しかくは 消える
+       ・くふうしての さいご「とった 0を つける」場面 … 線の 上の
+         とった 0 ぜんぶを 大きく ひとまとめに かこむ  */
+    if(fHint && !st.done){
+      var phh = st.seq[st.pi];
+      if(phh && st.stage==='pick' && phh.mcol!==undefined && phh.mcol>=0 && phh.mcol<n){
+        body += '<rect x="'+(PADL+phh.mcol*FC+2)+'" y="'+(yB+2)+'" width="'+(FC-4)+'" height="'+(FH-4)+
+                '" rx="7" fill="none" stroke="var(--red)" stroke-width="3" stroke-dasharray="7 5" '+
+                'pointer-events="none"/>';
+      }else if(phh && st.stage==='ghost' && st.zeros>0 &&
+               phh.acts[0] && phh.acts[0].t==='tail'){
+        var zc0 = rightR+1, zc1 = rightR + Math.max(st.pa, st.qb);
+        body += '<rect x="'+(PADL+zc0*FC-5)+'" y="'+(yA-6)+'" width="'+((zc1-zc0+1)*FC+10)+
+                '" height="'+(yB+FH-yA+4)+'" rx="10" fill="none" stroke="var(--red)" '+
+                'stroke-width="3.5" stroke-dasharray="9 6" pointer-events="none"/>';
+      }
+    }
+
     // かける数を えらぶ ところ（タップの あたり判定）
     if(st.stage==='pick'){
       for(var i3=0;i3<rbs.length;i3++){
@@ -1837,7 +2095,8 @@
     }
     var css = '<style>.fpop{animation:fpop .32s ease-out both}'+
               '@keyframes fpop{from{opacity:0}to{opacity:1}}'+
-              '@media(prefers-reduced-motion:reduce){.fpop{animation:none}}</style>';
+              '@keyframes fdraw{to{stroke-dashoffset:0}}'+
+              '@media(prefers-reduced-motion:reduce){.fpop{animation:none}line{animation:none!important;stroke-dashoffset:0!important}}</style>';
     return '<svg viewBox="0 0 '+VW+' '+VH+'" xmlns="http://www.w3.org/2000/svg" '+
            'style="width:100%;height:auto;max-height:calc(var(--fmax) - var(--fgap))">'+css+body+'</svg>';
   }
@@ -1858,7 +2117,8 @@
     if(isFx){
       document.getElementById('fzero').style.visibility = 'hidden';
       renderFx();
-      document.getElementById('fnote').innerHTML = fHint ? fxHintText() : '';
+      // ヒントは 筆算の 中の 点線（buildFxGrid）で 出すので 文は 出さない
+      document.getElementById('fnote').innerHTML = '';
       document.getElementById('freveal').textContent = fRevealed ? ('こたえ：'+fxTargets().join('、')) : '';
       return;
     }
@@ -1880,7 +2140,9 @@
       if(st.stage==='run') fSkip();
     };
 
-    document.getElementById('fnote').innerHTML = fHint ? fHintText() : '';
+    // ヒントは 筆算の 中の「点線の 赤しかく」（buildFude）で 出すので、
+    // ここに 文は 出さない（文を 出すと 筆算の 高さが かわってしまう）
+    document.getElementById('fnote').innerHTML = '';
     document.getElementById('freveal').textContent = '';
   }
 
@@ -1948,6 +2210,7 @@
     if(bType==='b1'){
       q.innerHTML = '0から9までの 数字を 使って、<b>'+bN+'けた</b>の 整数を つくります。<br>'+
                     '同じ数字を 何回 使っても よいとき、つぎの 整数を 書きましょう。';
+      q2.className = 'qbig';
       q2.textContent = (bRank===1 ? 'いちばん ' : bRank+'ばんめに ') +
                        (bKind==='max' ? '大きい' : '小さい') + ' 整数';
       g.style.display=''; ch.style.display='none';
@@ -1959,6 +2222,7 @@
                     '㋐が ㋑より 大きく なるのは、□が どんな 数字の ときですか。<b>ぜんぶ</b> えらびましょう。';
       // ヒントの ときは、㋐㋑で 同じ 上の位を うっすら かくす
       var dim = bHint ? ' bdim' : '', np = bPre.length;
+      q2.className = 'qbig cmp';        // 上の 問題文と 下の えらび肢から はなす
       q2.innerHTML = '<span class="bline"><span class="blbl">㋐</span>'+spread(bPre, dim)+
                      '<span class="bcell bbox">'+(bTry===null ? '&nbsp;' : bTry)+'</span>'+spread(bSuf)+'</span>'+
                      '<span class="bline"><span class="blbl">㋑</span>'+
@@ -1986,7 +2250,7 @@
     }
     document.getElementById('breveal').textContent = bRevealed ? ('こたえ：'+bAnsText()) : '';
     document.getElementById('bHintBtn').classList.toggle('on', bHint);
-    document.getElementById('bHintBtn').textContent = (bType==='b1') ? 'ヒント（位を出す）' : 'ヒント（同じ位を かくす）';
+    document.getElementById('bHintBtn').textContent = (bType==='b1') ? 'ヒント（9を入れる）' : 'ヒント（同じ位を かくす）';
     ans.style.display='none';
     document.getElementById('unitPad').style.display='none';
     Array.prototype.forEach.call(document.querySelectorAll('#bops button'), function(b){
@@ -2012,7 +2276,9 @@
        たし算は 子どもが 書かない（見て たしかめる）
      ========================================================= */
   var fxA=293, fxH=6, fxO=5, fxVals=['',''], fxSel=0, fxMarks=['',''];
-  var fxFixed=false, fxCells=[], fxCarries=[], fxHi=-1, fxLast=null;
+  /* fxMoved … ①（□×700）が 合った。3402を 正しい 位置へ 動かした
+     fxFixed … ①②が そろった。たし算を はじめる（もう 書きかえられない） */
+  var fxMoved=false, fxFixed=false, fxCells=[], fxCarries=[], fxHi=-1, fxLast=null;
   var fxActs=[], fxAi=0, fxDone=false, fxTimer=null;
 
   function fxB(){ return fxH*100 + fxO; }
@@ -2036,7 +2302,7 @@
   }
   function fxReset(){
     fxStop();
-    fxFixed=false; fxCells=[]; fxCarries=[]; fxHi=-1; fxLast=null;
+    fxMoved=false; fxFixed=false; fxCells=[]; fxCarries=[]; fxHi=-1; fxLast=null;
     fxActs=[]; fxAi=0; fxDone=false;
     for(var c=0;c<fxCols();c++) fxCells.push('');
   }
@@ -2080,19 +2346,22 @@
     fxApply(a); renderFx();
     fxTimer = setTimeout(fxStep, FSPD[a.t] || 500);
   }
-  // ①②が そろったら 筆算を 直して たし算を はじめる
+  /* ①が 合ったら 3402を 正しい 位置へ 動かす。
+     ②も そろったら まちがった こたえを 消して たし算を はじめる  */
   function fxTryFix(){
     var was = fxFixed;
-    var ok = (fxVals[0]!=='' && fxVals[1]!=='' &&
-              Number(fxVals[0])===fxH*100 && Number(fxVals[1])===2);
+    var moved = (fxVals[0]!=='' && Number(fxVals[0])===fxH*100);
+    var ok = moved && (fxVals[1]!=='' && Number(fxVals[1])===2);
     if(ok && !was){
-      fxReset(); fxFixed=true;
+      fxReset(); fxMoved=true; fxFixed=true;
       fxActs = fxAddActs(); fxAi=0;
-      setFb(fxPP2()+' を 正しい 位置に 動かしたよ。たし算を 見よう','ok');
+      setFb('これで 正しい 筆算だね。たし算を 見よう','ok');
       fxTimer = setTimeout(fxStep, FSPD.gap);
-    }else if(!ok && was){
-      fxReset();                       // ①②を なおしたら もとの まちがった 筆算へ
+      return;
     }
+    if(!ok && was) fxReset();            // ①②を なおしたら もとの まちがった 筆算へ
+    if(moved && !fxMoved) setFb(fxPP2()+' を 正しい 位置に 動かしたよ','ok');
+    fxMoved = moved;                     // ①だけでも 合っていれば 動かした ままに
   }
   // ①が 合ったら ②の □へ
   function fxAdvance(){
@@ -2114,26 +2383,29 @@
       }
       return t;
     }
-    function hl(yy){
-      return '<line x1="'+(PADL-30)+'" y1="'+yy+'" x2="'+(PADL+n*C)+'" y2="'+yy+
-             '" stroke="var(--line)" stroke-width="3"/>';
+    // 線は 数字の ある ところ だけ。x1/x2 は 列で わたす
+    function hl(yy, c1, c2){
+      return '<line x1="'+(PADL+Math.max(0,c1)*C)+'" y1="'+yy+'" x2="'+(PADL+c2*C)+'" y2="'+yy+
+             '" stroke="var(--line)" stroke-width="3" stroke-linecap="round"/>';
     }
     var yPP1, yPP2, ySum;
     body += dig(String(fxA), n-1, y, 'var(--ink)'); y+=H;
-    var bs=String(fxB());
+    var bs=String(fxB()), yMul=y;                     // yMul＝かける数の 段
     body += dig(bs, n-1, y, 'var(--ink)');
-    body += '<text x="'+(PADL+(n-1-bs.length)*C+C/2)+'" y="'+(y+H*0.76)+
+    var fxXcol = n-1-bs.length;                       // × の 列
+    body += '<text x="'+(PADL+fxXcol*C+C/2)+'" y="'+(y+H*0.76)+
             '" text-anchor="middle" font-size="36" font-weight="800" fill="var(--ink)">×</text>';
-    y+=H; body += hl(y+2); y+=12;
+    y+=H; body += hl(y+2, fxXcol, n); y+=12;
     yPP1 = y; body += dig(String(fxPP1()), n-1, y, 'var(--ink)'); y+=H;
     yPP2 = y;
-    if(fxFixed){
+    if(fxMoved){
       body += dig(String(fxPP2()), n-3, y, 'var(--ok)');     // 正しい 位置へ 動かした
     }else{
       body += dig(String(fxPP2()), n-2, y, 'var(--red)');    // ここが まちがい
       body += '<text x="'+(PADL+n*C+4)+'" y="'+(y+H*0.7)+'" font-size="20" font-weight="800" fill="var(--red)">←</text>';
     }
-    y+=H; body += hl(y+2); y+=12;
+    // こたえの 線は 正しい 答えの けた数に あわせる
+    y+=H; body += hl(y+2, n-String(fxProd()).length, n); y+=12;
     ySum = y;
     if(fxFixed){
       for(var c=0;c<n;c++){
@@ -2148,10 +2420,27 @@
         body += '<text x="'+(PADL+(cy.c-1)*C+C*0.74)+'" y="'+(y+H*0.30)+'" text-anchor="middle" '+
                 'font-size="17" font-weight="800" fill="var(--ink)"'+(isNewC?' class="fpop"':'')+'>'+cy.v+'</text>';
       }
-    }else{
-      body += dig(String(fxWrong()), n-1, y, 'var(--red)');
+    }else if(!fxMoved){
+      body += dig(String(fxWrong()), n-1, y, 'var(--red)');   // まだ 直して いない ときだけ
     }
+    // 動かした あとは まちがった こたえを 消して、②が 入るのを 待つ
     y+=H;
+    /* ヒント
+       ・①の あいだ … かける数の 百の位（7）を 点線の 赤しかくで かこむ
+       ・3402を 動かした あと（②のあいだ）… 3402の 右に うすい 0を 2つ 出す  */
+    if(fHint && !fxDone){
+      if(!fxMoved){
+        body += '<rect x="'+(PADL+(n-3)*C+2)+'" y="'+(yMul+2)+'" width="'+(C-4)+'" height="'+(H-4)+
+                '" rx="7" fill="none" stroke="var(--red)" stroke-width="3" stroke-dasharray="7 5" '+
+                'pointer-events="none"/>';
+      }else if(!fxFixed){
+        // 「3けた×3けた」の ゆうれいの 0ちゃんと 同じ、色を かえた うすい 0
+        for(var z=n-2;z<=n-1;z++){
+          body += '<text x="'+(PADL+z*C+C/2)+'" y="'+(yPP2+H*0.76)+'" text-anchor="middle" '+
+                  'font-size="36" font-weight="800" fill="#a9b4bc" pointer-events="none">0</text>';
+        }
+      }
+    }
     // たし算中の 列を 光らせる
     var hiRect='';
     if(fxHi>=0){
@@ -2220,12 +2509,13 @@
     var tg=fxTargets();
     fxVals=[String(tg[0]), String(tg[1])];
     fxMarks=['','']; fRevealed=true;
-    fxReset(); fxFixed=true;
+    fxReset(); fxMoved=true; fxFixed=true;
     var acts=fxAddActs();
     for(var i=0;i<acts.length;i++) fxApply(acts[i]);
     fxHi=-1; fxLast=null; fxDone=true;
     renderFx();
   }
+  // 文の ヒント。いまは 使っていない（ヒントは 筆算の 中の 点線に かえた）
   function fxHintText(){
     return fxH+' は 百の位の 数字だから、ほんとうは '+fxA+' × '+(fxH*100)+' を 計算している。';
   }
@@ -2248,6 +2538,7 @@
   });
 
   function press(k){
+    if(mode==='flash') return;              // ４けた練習に こたえ欄は ない
     cancelAuto(); hideMaru(); hideBatsu();
     if(mode==='fude'){ if(fType==='fx') fxKey(k); return; }
     if(mode==='big'){ if(bType==='b1') ciKey(stB, bAns, k, renderBig); return; }
@@ -2268,6 +2559,7 @@
   });
 
   function check(){
+    if(mode==='flash') return;              // ４けた練習に こたえあわせは ない
     if(mode==='shikumi' && sType!=='w') return;
     if(mode==='fude'){ if(fType==='fx') fxCheck(); return; }
     if(mode==='big'){ bCheck(); return; }
@@ -2308,6 +2600,15 @@
   document.addEventListener('keydown', function(e){
     if(e.ctrlKey || e.metaKey || e.altKey) return;
     var el = document.activeElement;
+
+    /* ４けた練習は キーが ちがう。スペース＝つぎの数／H＝かくす・見せる。
+       ボタンや チェックボックスに フォーカスが ある ときは ふつうの 動きに ゆずる */
+    if(mode==='flash'){
+      if(el && (el.tagName==='INPUT' || el.tagName==='BUTTON')) return;
+      if(e.key===' ' || e.key==='Enter'){ e.preventDefault(); flNew(); }
+      else if(e.key==='h' || e.key==='H'){ e.preventDefault(); flToggleHide(); }
+      return;
+    }
 
     if(e.key==='Enter'){
       if(mode==='shikumi' && sType!=='w') return;
@@ -2354,7 +2655,7 @@
   /* =========================================================
      ボタンの動き
      ========================================================= */
-  // ①② 大きい数のしくみ（何の位／何が何こ／数字で書く）
+  // ①②⑨ 大きい数のしくみ（何の位／何が何こ／読み方／数字で書く）
   var S_TYPES = ['q1','q3','r','w'];
   var S_SUB = {
     q1:'位取り表を 見て、位（くらい）を こたえよう。',
@@ -2482,7 +2783,17 @@
       cancelAuto(); CH.reset(); newBig(); clearAll(); renderBig();
     });
   });
-  document.getElementById('bHintBtn').addEventListener('click', function(){ bHint=!bHint; renderBig(); });
+  document.getElementById('bHintBtn').addEventListener('click', function(){
+    bHint=!bHint;
+    // 「大きい整数」は いちばん 大きい 数から かぞえるので、一の位いがいは ぜんぶ 9。
+    // ヒントでは そこまで 入れて、一の位 だけを 子どもが 入れる
+    if(bHint && bType==='b1' && !stB.done){
+      cancelAuto(); setFb('','');
+      for(var i=0;i<stB.n-1;i++) stB.cells[i]='9';
+      stB.sel = stB.n-1;
+    }
+    renderBig();
+  });
   document.getElementById('bZeroBtn').addEventListener('click', function(){ ciFillZeros(stB, bAns, renderBig); });
   function nextBig(){
     if(bRand) bType = pick(['b1','b2']);
@@ -2515,6 +2826,118 @@
   document.getElementById('fNextBtn').addEventListener('click', function(){ cancelAuto(); nextFude(); });
 
   /* =========================================================
+     ⑩ ４けた練習（フラッシュカード）
+     ─────────────────────────────────────────────────────────
+     「４けたランダム数字ジェネレーター」を このタブに 入れたもの。
+     こたえあわせは しない。数を 出して 読む／かくす だけ なので、
+     はなまる・ばつ・10問チャレンジとは つながっていない。
+     ========================================================= */
+  var flD = 4;             // けた数（2・3・4）
+  var flZeroOn = true;     // とちゅうの位に かならず 0 を 入れる
+  var flNum = 1000;
+  /* flHidden … カードを かくしているか。
+     一度 かくしたら「つぎの数」でも かくれた まま 出る（書き取りの 練習）。
+     「見せる」を おすまで ずっと つづく。 */
+  var flHidden = false;
+  var flSec = 3;           // じどうで めくる 間かく（秒）
+  var flTimer = null;
+  var FL_KETA = {2:'２', 3:'３', 4:'４'};
+
+  var flDigitsEl = document.getElementById('fldigits');
+  var flMaskEl   = document.getElementById('flmask');
+  var flSecLbl   = document.getElementById('flSecLbl');
+  var flAutoBtn  = document.getElementById('flAutoBtn');
+  var flHideBtn  = document.getElementById('flHideBtn');
+  var flZeroChk  = document.getElementById('flZero');
+  var flSpeakChk = document.getElementById('flAutoSpeak');
+
+  /* いちばん 上の 位は 0に しない（min が 10・100・1000 なので しぜんに そうなる）。
+     flZeroOn の ときは 2けためから 下の どこかに かならず 0 が 入る。
+     同じ数が 2回 つづけて 出ないように している。 */
+  function flRand(d){
+    var min = pow10(d-1), max = pow10(d)-1, n = flNum, s, i, has;
+    for(var t=0; t<600; t++){
+      n = rnd(min, max);
+      if(n === flNum) continue;                       // 前と 同じは やりなおし
+      if(!flZeroOn) return n;
+      s = String(n); has = false;
+      for(i=1; i<d; i++) if(s.charAt(i)==='0') has = true;
+      if(has) return n;
+    }
+    return n;
+  }
+
+  // OSの 読み上げ。数字を そのまま わたすのが いちばん しぜんに 読まれる
+  function flSpeak(){
+    if(!('speechSynthesis' in window)) return;
+    try{
+      var u = new SpeechSynthesisUtterance(String(flNum));
+      u.lang = 'ja-JP'; u.rate = 1; u.pitch = 1; u.volume = 1;
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(u);
+    }catch(err){}
+  }
+  function flQuiet(){
+    if('speechSynthesis' in window){ try{ window.speechSynthesis.cancel(); }catch(err){} }
+  }
+
+  function renderFlash(){
+    flDigitsEl.textContent = String(flNum);
+    flDigitsEl.classList.toggle('off', flHidden);
+    flMaskEl.textContent = new Array(flD+1).join('?');
+    flMaskEl.style.display = flHidden ? '' : 'none';
+    flHideBtn.textContent = flHidden ? '見せる' : 'かくす';
+    flHideBtn.classList.toggle('on', flHidden);        // かくしている あいだ 光る
+    flSecLbl.textContent = flSec + ' 秒';
+    flAutoBtn.textContent = flTimer ? 'とめる' : 'スタート';
+    flAutoBtn.classList.toggle('on', !!flTimer);
+    Array.prototype.forEach.call(document.querySelectorAll('#flDigitChips button'), function(b){
+      b.classList.toggle('on', Number(b.getAttribute('data-d'))===flD);
+    });
+    document.getElementById('flq').textContent =
+      FL_KETA[flD] + 'けたの 数です。声に 出して 読もう。';
+  }
+
+  // つぎの数。かくしている あいだは かくれた ままで 出る
+  function flNew(){
+    flNum = flRand(flD);
+    renderFlash();
+    if(flSpeakChk.checked) flSpeak();
+  }
+  /* かくす ⇔ 見せる。かくすだけ。音は 出さない。
+     音が ほしい ときは「読み上げ」ボタン、または
+     右の「じどうで 読み上げる」に チェックを 入れる */
+  function flToggleHide(){
+    flHidden = !flHidden;
+    renderFlash();
+  }
+  function flStopAuto(){ if(flTimer){ clearInterval(flTimer); flTimer=null; } }
+  function flStartAuto(){ flStopAuto(); flTimer = setInterval(flNew, flSec*1000); }
+
+  document.getElementById('flNextBtn').addEventListener('click', function(){ flNew(); this.blur(); });
+  document.getElementById('flSpeakBtn').addEventListener('click', function(){ flSpeak(); this.blur(); });
+  flHideBtn.addEventListener('click', function(){ flToggleHide(); this.blur(); });
+  document.getElementById('flDigitChips').addEventListener('click', function(e){
+    var t = e.target;
+    if(!t || !t.getAttribute) return;
+    var d = t.getAttribute('data-d');
+    if(d===null) return;
+    flD = Number(d); flNew(); t.blur();
+  });
+  flZeroChk.addEventListener('change', function(){ flZeroOn = flZeroChk.checked; flNew(); });
+  Array.prototype.forEach.call(document.querySelectorAll('.fstep'), function(b){
+    b.addEventListener('click', function(){
+      flSec = Math.min(10, Math.max(1, flSec + Number(b.getAttribute('data-sec'))));
+      if(flTimer) flStartAuto();                 // 動いている ときは 新しい 間かくで かけなおす
+      renderFlash(); this.blur();
+    });
+  });
+  flAutoBtn.addEventListener('click', function(){
+    if(flTimer) flStopAuto(); else flStartAuto();
+    renderFlash(); this.blur();
+  });
+
+  /* =========================================================
      タブ切りかえ
      ========================================================= */
   var TABS = {
@@ -2529,12 +2952,18 @@
     big:  { tab:'tabBig', area:'bigArea', row:'rowBig',
             sub:'0から9の 数字で 大きい 整数を つくろう。' },
     fude: { tab:'tabFude', area:'fudeArea', row:'rowFude',
-            sub:'かける数を タップ。2だんめからは「ゆうれいの 0ちゃん」を 先に 書こう。' }
+            sub:'かける数を タップ。2だんめからは「ゆうれいの 0ちゃん」を 先に 書こう。' },
+    flash:{ tab:'tabFlash', area:'flashArea', row:'rowFlash',
+            sub:'４けたの 数を すらすら 読めるように しよう。' }
   };
 
   function setMode(m){
     cancelAuto(); fStop();
+    flStopAuto(); flQuiet();   // ４けた練習の じどうめくり・読み上げは タブを 出たら とめる
     CH.reset();            // タブを かえたら 数えなおし
+    // ４けた練習は こたえあわせが ないので、10問チャレンジとは いっしょに 使わない
+    if(m==='flash') CH.stop();
+    document.getElementById('chal-mount').style.display = (m==='flash') ? 'none' : '';
     mode = m;
     for(var key in TABS){
       if(!TABS.hasOwnProperty(key)) continue;
@@ -2547,6 +2976,8 @@
     var useAns = (m==='shikumi') ? (sType==='w')
                : (m==='make' || m==='nl' || m==='mul' || m==='fude' || m==='big');
     document.getElementById('answerBox').style.display = useAns ? '' : 'none';
+    // ４けた練習だけ、こたえ欄の かわりに 設定パネルを 右に 出す
+    document.getElementById('flashSide').style.display = (m==='flash') ? '' : 'none';
     document.getElementById('unitPad').style.display = unitKeysOn() ? '' : 'none';
     document.getElementById('numPad').style.display = '';
     ans.style.display = '';
@@ -2558,6 +2989,7 @@
     else if(m==='mul'){ ans.placeholder='れい：560億'; newMul(xOp); renderMul(); }
     else if(m==='big'){ newBig(); renderBig(); }
     else if(m==='fude'){ newFude(fType); renderFude(); }
+    else if(m==='flash'){ flNew(); }   // かくすモードは タブを 出入りしても つづく
   }
   document.getElementById('tabShikumi').addEventListener('click', function(){ if(mode!=='shikumi') setMode('shikumi'); });
   document.getElementById('tabMake').addEventListener('click',  function(){ if(mode!=='make')  setMode('make'); });
@@ -2565,11 +2997,13 @@
   document.getElementById('tabMul').addEventListener('click',   function(){ if(mode!=='mul')   setMode('mul'); });
   document.getElementById('tabBig').addEventListener('click',   function(){ if(mode!=='big')  setMode('big'); });
   document.getElementById('tabFude').addEventListener('click',  function(){ if(mode!=='fude') setMode('fude'); });
+  document.getElementById('tabFlash').addEventListener('click', function(){ if(mode!=='flash') setMode('flash'); });
 
   CH.init({
     mount: '#chal-mount',
     total: 10,
     next: nextAny,             // つぎの問題は いま開いている タブから 出す
+    nextDelay: 3200,           // はなまるが 消えた あとも しばらく 問題を 見せる
     sound: null,
     record: false,             // 学校の 共用パソコンを 考えて 記録は 残さない
     recordKey: 'ookiikazu'
